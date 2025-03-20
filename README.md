@@ -1,2 +1,1 @@
-# energy-code-eval
-Evaluate the energy-efficient level of open-source LLMs for Code.
+# Evaluating Energy-Efficient Level of Open-Source LLMs for Code.
