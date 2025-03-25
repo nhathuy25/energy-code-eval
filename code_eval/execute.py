@@ -1,3 +1,17 @@
+# Copyright 2020 The HuggingFace Datasets Authors and the current dataset script contributor.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # This code is adapted from OpenAI's release
 # https://github.com/openai/human-eval/blob/master/human_eval/execution.py
 
@@ -9,10 +23,38 @@ import os
 import platform
 import signal
 import tempfile
-from typing import Dict, Optional
 
 
-def unsafe_execute(problem: Dict, completion: str, timeout: float, result):
+def check_correctness(check_program, timeout, task_id, completion_id):
+    """
+    Evaluates the functional correctness of a completion by running the test
+    suite provided in the problem.
+
+    :param completion_id: an optional completion ID so we can match
+        the results later even if execution finishes asynchronously.
+    """
+    manager = multiprocessing.Manager()
+    result = manager.list()
+
+    p = multiprocessing.Process(target=unsafe_execute, args=(check_program, result, timeout))
+    p.start()
+    p.join(timeout=timeout + 1)
+    if p.is_alive():
+        p.kill()
+
+    if not result:
+        result.append("timed out")
+
+    return dict(
+        task_id=task_id,
+        passed=result[0] == "passed",
+        result=result[0],
+        completion_id=completion_id,
+    )
+
+
+def unsafe_execute(check_program, result, timeout):
+
     with create_tempdir():
 
         # These system calls are needed when cleaning up tempdir.
@@ -26,30 +68,11 @@ def unsafe_execute(problem: Dict, completion: str, timeout: float, result):
         # Disable functionalities that can make destructive changes to the test.
         reliability_guard()
 
-        # Construct the check program and run it.
-        check_program = (
-            problem["prompt"]
-            + completion
-            + "\n"
-            + problem["test"]
-            + "\n"
-            + f"check({problem['entry_point']})"
-        )
-
+        # Run program.
         try:
             exec_globals = {}
             with swallow_io():
                 with time_limit(timeout):
-                    # WARNING
-                    # This program exists to execute untrusted model-generated code. Although
-                    # it is highly unlikely that model-generated code will do something overtly
-                    # malicious in response to this test suite, model-generated code may act
-                    # destructively due to a lack of model capability or alignment.
-                    # Users are strongly encouraged to sandbox this evaluation suite so that it
-                    # does not perform destructive actions on their host or network. For more
-                    # information on how OpenAI sandboxes its code, see the accompanying paper.
-                    # Once you have read this disclaimer and taken appropriate precautions,
-                    # uncomment the following line and proceed at your own risk:
                     exec(check_program, exec_globals)
             result.append("passed")
         except TimeoutException:
@@ -63,39 +86,8 @@ def unsafe_execute(problem: Dict, completion: str, timeout: float, result):
         os.chdir = chdir
 
 
-def check_correctness(
-    problem: Dict, completion: str, timeout: float, completion_id: Optional[int] = None
-) -> Dict:
-    """
-    Evaluates the functional correctness of a completion by running the test
-    suite provided in the problem.
-
-    :param completion_id: an optional completion ID so we can match
-        the results later even if execution finishes asynchronously.
-    """
-
-    manager = multiprocessing.Manager()
-    result = manager.list()
-
-    p = multiprocessing.Process(target=unsafe_execute, args=(problem, completion, timeout, result))
-    p.start()
-    p.join(timeout=timeout + 1)
-    if p.is_alive():
-        p.kill()
-
-    if not result:
-        result.append("timed out")
-
-    return dict(
-        task_id=problem["task_id"],
-        passed=result[0] == "passed",
-        result=result[0],
-        completion_id=completion_id,
-    )
-
-
 @contextlib.contextmanager
-def time_limit(seconds: float):
+def time_limit(seconds):
     def signal_handler(signum, frame):
         raise TimeoutException("Timed out!")
 
@@ -131,13 +123,13 @@ class WriteOnlyStringIO(io.StringIO):
     """StringIO that throws an exception when it's read from"""
 
     def read(self, *args, **kwargs):
-        raise IOError
+        raise OSError
 
     def readline(self, *args, **kwargs):
-        raise IOError
+        raise OSError
 
     def readlines(self, *args, **kwargs):
-        raise IOError
+        raise OSError
 
     def readable(self, *args, **kwargs):
         """Returns True if the IO object can be read."""
@@ -163,7 +155,7 @@ def chdir(root):
         os.chdir(cwd)
 
 
-def reliability_guard(maximum_memory_bytes: Optional[int] = None):
+def reliability_guard(maximum_memory_bytes=None):
     """
     This disables various destructive functions and prevents the generated code
     from interfering with the test (e.g. fork bomb, killing other processes,

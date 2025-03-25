@@ -9,6 +9,23 @@ from typing import List
 from code_eval import tasks
 from code_eval.generation import parallel_generations
 
+_WARNING = """
+################################################################################
+                                  !!!WARNING!!!
+################################################################################
+The "code_eval"/"apps_metric" you are about to use, execute untrusted 
+model-generated code in Python.
+Although it is highly unlikely that model-generated code will do something
+overtly malicious in response to this test suite, model-generated code may act
+destructively due to a lack of model capability or alignment.
+Users are strongly encouraged to sandbox this evaluation suite so that it
+does not perform destructive actions on their host or network. For more
+information on how OpenAI sandboxes its code, see the paper "Evaluating Large
+Language Models Trained on Code" (https://arxiv.org/abs/2107.03374).
+Once you have read this disclaimer and taken appropriate precautions, set the argument 
+"allow_code_execution" to True.
+################################################################################\
+"""
 
 class Evaluator:
     def __init__(self, model, tokenizer, args):
@@ -31,7 +48,7 @@ class Evaluator:
         if not self.args.limit:
             n_tasks -= self.args.limit_start
         references = [task.get_reference(dataset[i]) for i in range(self.args.limit_start, self.args.limit_start+n_tasks)]
-
+        
         if self.args.check_references:
             if "get_solution" in inspect.signature(task.get_reference).parameters:
                 solutions = [[task.get_reference(dataset[i], get_solution=True)] for i in range(self.args.limit_start, self.args.limit_start+n_tasks)]
@@ -67,9 +84,11 @@ class Evaluator:
 
     def evaluate(self, task_name: str, intermediate_generations=None) -> List:
         task = tasks.get_task(task_name, self.args)
+        if task.requires_execution and not self.allow_code_execution:
+            raise ValueError(_WARNING)
 
         generations, references = self.generate_text(task_name, intermediate_generations=intermediate_generations)
-
+        
         if not self.args.load_generations_path:
             save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json"
             self.save_json_files(generations, references, save_generations_path, f"references_{task_name}.json")

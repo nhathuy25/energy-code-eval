@@ -31,8 +31,11 @@ Requires-Dist: torchvision==0.13.1; extra == "ds1000"
 Requires-Dist: tqdm==4.64.1; extra == "ds1000"
 Requires-Dist: xgboost==1.6.2; extra == "ds1000"
 Requires-Dist: Pillow==9.2.0; extra == "ds1000"
+Dynamic: description
 Dynamic: license
 Dynamic: provides-extra
 Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary
+
+# Evaluate Energy-Efficient for Code Generation Tasks with Open-Sourced LLMs

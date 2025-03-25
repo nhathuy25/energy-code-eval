@@ -220,6 +220,7 @@ def main():
     results = {}
     if args.load_generations_path:
         # here we don't generate code but only evaluate previously computed generations
+        print("evaluation only mode")
         evaluator = Evaluator(None, None, args)
         for task in task_names:
             results[task] = evaluator.evaluate(task)
@@ -311,6 +312,7 @@ def main():
                 raise ValueError("No eos_token or bos_token found")
         try:
             tokenizer.pad_token = tokenizer.eos_token
+            
         # Some models like CodeGeeX2 have pad_token as a read-only property
         except AttributeError:
             print("Not setting pad_token to eos_token")
@@ -350,8 +352,9 @@ def main():
                     save_references_path,
                 )
             else:
-                results[task] = evaluator.evaluate(task)
-
+                results[task] = evaluator.evaluate(
+                    task, intermediate_generations=intermediate_generations
+                )
 
     # Save all args to config
     results["config"] = vars(args)

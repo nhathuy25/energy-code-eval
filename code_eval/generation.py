@@ -99,7 +99,7 @@ def parallel_generations(
         model,
         tokenizer,
         ds_loader,
-        n_tasks,
+        n_tasks=n_tasks,
         limit_start=args.limit_start + curr_sample_idx,
         batch_size=args.batch_size,
         prefix=args.prefix,
@@ -107,6 +107,6 @@ def parallel_generations(
         postprocess=args.postprocess,
         intermediate_generations=intermediate_generations,
         intermediate_save_generations_path=intermediate_save_generations_path,
-        **gen_kwargs
+        **gen_kwargs,
     )
     return generations
