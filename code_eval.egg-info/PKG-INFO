@@ -1,0 +1,38 @@
+Metadata-Version: 2.2
+Name: code_eval
+Version: 0.0.0
+Summary: Evaluate the energy-efficient level of open-source LLMs for Code tasks.
+License: Apache 2.0
+Requires-Python: >=3.9
+Requires-Dist: transformers>=4.25.1
+Requires-Dist: accelerate>=0.13.2
+Requires-Dist: datasets>=2.6.1
+Requires-Dist: evaluate>=0.3.0
+Requires-Dist: pyext==0.5
+Requires-Dist: mosestokenizer==1.0.0
+Requires-Dist: huggingface_hub>=0.11.1
+Requires-Dist: fsspec>=2023.12.2
+Provides-Extra: ds1000
+Requires-Dist: DateTime==4.7; extra == "ds1000"
+Requires-Dist: gensim==4.2.0; extra == "ds1000"
+Requires-Dist: matplotlib==3.5.2; extra == "ds1000"
+Requires-Dist: numpy==1.21.6; extra == "ds1000"
+Requires-Dist: openai==0.23.0; extra == "ds1000"
+Requires-Dist: pandas==1.3.5; extra == "ds1000"
+Requires-Dist: pandas-datareader==0.10.0; extra == "ds1000"
+Requires-Dist: pathlib==1.0.1; extra == "ds1000"
+Requires-Dist: scikit-learn==1.0.2; extra == "ds1000"
+Requires-Dist: scipy==1.7.3; extra == "ds1000"
+Requires-Dist: seaborn==0.11.2; extra == "ds1000"
+Requires-Dist: statsmodels==0.13.2; extra == "ds1000"
+Requires-Dist: tensorflow==2.10.0; extra == "ds1000"
+Requires-Dist: tokenizers==0.12.1; extra == "ds1000"
+Requires-Dist: torchvision==0.13.1; extra == "ds1000"
+Requires-Dist: tqdm==4.64.1; extra == "ds1000"
+Requires-Dist: xgboost==1.6.2; extra == "ds1000"
+Requires-Dist: Pillow==9.2.0; extra == "ds1000"
+Dynamic: license
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
