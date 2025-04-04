@@ -45,6 +45,7 @@ def parallel_generations(
         n_tasks,
         args,
         curr_sample_idx: int = 0,
+        save_every_k_tasks: int = -1,
         intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
         intermediate_save_generations_path: Optional[str] = None,
 ):
@@ -62,7 +63,33 @@ def parallel_generations(
         "top_p": args.top_p,
         "top_k": args.top_k,
         "max_tokens": args.max_tokens,
+        "stop_token_ids" : [tokenizer.eos_token]
     }
+    stopping_criteria = []
+    # The input_length / start_length set to 0 for now will be adjusted later
+    # Check if the task has a custom check_fn method for the stopping criteria
+    if task.stop_words and tokenizer.eos_token:
+        task.stop_words.append(tokenizer.eos_token)    
+    """
+    if hasattr(task, "check_fn"):
+        stopping_criteria.append(
+            EndOfFunctionCriteria(0, task.stop_words, tokenizer, task.check_fn)
+        )
+    #Stop words stopping criteria for generation.
+    #Experiment for the case of overgeneration of model
+    elif task.stop_words:
+        stopping_criteria.append(
+            EndOfFunctionCriteria(0, task.stop_words, tokenizer)
+        )
+    if hasattr(task, "max_length_multiplier") and task.max_length_multiplier:
+        stopping_criteria.append(
+            TooLongFunctionCriteria(0, task.max_length_multiplier)
+        )
+    
+    if stopping_criteria:
+        gen_kwargs["stopping_criteria"] = StoppingCriteriaList(stopping_criteria)
+    """
+
 
     # Instruction tokens is a set of 3 tokens: begin_token, end_token, assistant_token
     # TODO: define the use for instruction tokens
@@ -105,6 +132,7 @@ def parallel_generations(
         prefix=args.prefix,
         instruction_tokens=instruction_tokens,
         postprocess=args.postprocess,
+        save_every_k_tasks=save_every_k_tasks,
         intermediate_generations=intermediate_generations,
         intermediate_save_generations_path=intermediate_save_generations_path,
         **gen_kwargs,

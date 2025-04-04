@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 
-from code_eval.execute import check_correctness
+from .execute import check_correctness
 
 
 _CITATION = """\

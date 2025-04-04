@@ -110,6 +110,7 @@ def complete_code(
     prefix="", 
     instruction_tokens=None,
     postprocess=False, #Later when defined, set to True by default
+    save_every_k_tasks: int = -1,
     intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
     intermediate_save_generations_path: Optional[str] = None,
     **gen_kwargs
@@ -147,7 +148,7 @@ def complete_code(
         for sample, generated_outputs in zip(generated_tasks, generated_outputs):
             gen_token_dict[sample].append(generated_outputs)
 
-        if intermediate_save_generations_path and (step + 1) % 50 == 0:
+        if save_every_k_tasks >= 1 and (step + 1) % save_every_k_tasks == 0:
             # If exist path to save intermediate generations, save the generation every 50 tasks.
             code_gens = update_code_gens(
                 task,
@@ -167,19 +168,19 @@ def complete_code(
             # reset gen_token_dict - prevent redundant decoding
             gen_token_dict = defaultdict(list)
 
-        # Adding and organised new generated outputs to 2D list 'code_gens' 
-        code_gens = update_code_gens(
-            task,
-            tokenizer,
-            limit_start,
-            prefix,
-            instruction_tokens,
-            postprocess,
-            code_gens,
-            gen_token_dict
-        )
+    # Adding and organised new generated outputs to 2D list 'code_gens' 
+    code_gens = update_code_gens(
+        task,
+        tokenizer,
+        limit_start,
+        prefix,
+        instruction_tokens,
+        postprocess,
+        code_gens,
+        gen_token_dict
+    )
 
-        generations.extend(code_gens)
+    generations.extend(code_gens)
     return generations
 
 # TODO : define post processing step
@@ -208,10 +209,11 @@ def update_code_gens(
                     s, skip_special_tokens=True
                 )
             if isinstance(s, RequestOutput):
-                gen_code = generated_outputs[0].outputs[0].text  
+                # Unlike HFTransformers, vLLM doesn't concatenate prompt and generated outputs, we concatenate it manually
+                gen_code = generated_outputs[0].prompt + generated_outputs[0].outputs[0].text  
             else:
                 raise ValueError(
-                    "The outputs must be in the form of token ids or RequestOutput of vLLM"
+                    "The outputs must be in the form of token_ids or RequestOutput of vLLM"
                 )        
             if not INFILL_MODE:
                 # TODO 
@@ -219,6 +221,9 @@ def update_code_gens(
             if postprocess:
                 # TODO: define post processing step
                 # limit_start will be applied here
-                pass
-            code_gens[sample].append(gen_code)
+                code_gens[sample].append(
+                    task.postprocess_generation(gen_code, int(sample) + limit_start)
+                )
+            else: 
+                code_gens[sample].append(gen_code)
     return code_gens

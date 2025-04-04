@@ -33,8 +33,10 @@ class Evaluator:
         self.tokenizer = tokenizer
         self.args = args
 
+        # setup arguments
         self.metric_output_path = args.metric_output_path
 
+        # code evaluation permission
         self.allow_code_execution = args.allow_code_execution
 
     def generate_text(self, task_name, intermediate_generations=None):
@@ -48,7 +50,7 @@ class Evaluator:
         if not self.args.limit:
             n_tasks -= self.args.limit_start
         references = [task.get_reference(dataset[i]) for i in range(self.args.limit_start, self.args.limit_start+n_tasks)]
-        
+
         if self.args.check_references:
             if "get_solution" in inspect.signature(task.get_reference).parameters:
                 solutions = [[task.get_reference(dataset[i], get_solution=True)] for i in range(self.args.limit_start, self.args.limit_start+n_tasks)]
@@ -71,9 +73,10 @@ class Evaluator:
             n_tasks=n_tasks,
             args=self.args,
             curr_sample_idx=curr_sample_idx,  # curr_sample_idx will added to limit_start to fix indexing
+            save_every_k_tasks=self.args.save_every_k_tasks,
             intermediate_generations=curr_generations,
             intermediate_save_generations_path=intermediate_save_generations_path,
-        ) 
+        )
 
         if len(generations[0]) > self.args.n_samples:
             generations = [l[: self.args.n_samples] for l in generations]
@@ -90,9 +93,10 @@ class Evaluator:
         generations, references = self.generate_text(task_name, intermediate_generations=intermediate_generations)
         
         if not self.args.load_generations_path:
-            save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json"
+            save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json" # Save generations path to .jsonl file for better visibility
             self.save_json_files(generations, references, save_generations_path, f"references_{task_name}.json")
-        
+
+        # make sure tokenizer plays nice with multiprocessing
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
         if self.allow_code_execution and task.requires_execution:
             os.environ["HF_ALLOW_CODE_EVAL"] = "1"
@@ -100,12 +104,12 @@ class Evaluator:
         results = task.process_results(generations, references)
         return results
     
-    def save_json_file(
+    def save_json_files(
         self,
         generations: List[str],
-        references: List[str], 
+        references: List[str],
         save_generations_path: str,
-        save_references_path: str
+        save_references_path: str,
     ) -> None:
         if self.args.save_generations:
             with open(save_generations_path, "w") as fp:

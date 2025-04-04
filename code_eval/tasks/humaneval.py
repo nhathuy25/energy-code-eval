@@ -10,7 +10,7 @@ Homepage: https://github.com/openai/human-eval
 
 
 from code_eval.base import Task
-from code_eval.tasks.code_eval import compute_code_eval
+from .custom_metric.code_eval import compute_code_eval
 
 _CITATION = """
 @misc{chen2021evaluating,

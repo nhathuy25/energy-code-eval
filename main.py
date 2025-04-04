@@ -13,19 +13,27 @@ from transformers import (
 )
 
 from vllm import LLM, SamplingParams
+from vllm.engine.arg_utils import EngineArgs
 from vllm.config import ModelConfig
 
 from code_eval.arguments import EvalArguments
 from code_eval.evaluator import Evaluator
 from code_eval.tasks import ALL_TASKS
 
+MODEL_NAME_TO_LOCAL_DIR = {
+    "codellama7i": '/workdir/models/CodeLlama-7b-Instruct-hf',
+    "codellama34i" : '/workdir/models/CodeLlama-34b-Instruct-hf',
+    "deepseek_base" : '/workdir/models/DeepSeek-Coder-V2-Lite-Base',
+    "deepseek_instruct" : '/workdir/models/DeepSeek-Coder-V2-Lite-Instruct',
+    "codestral" : '/workdir/models/Codestral-22B-v0.1',
+}
 
 def parse_args():
     parser = HfArgumentParser(EvalArguments)
 
     parser.add_argument(
         "--model",
-        default="models/CodeLlama-7b-Instruct-hf",
+        default="CodeLlama-7b",
         help="Model to evaluate, provide a repo name in Hugging Face hub or a local path",
     )
     parser.add_argument(
@@ -50,8 +58,18 @@ def parse_args():
         help="Use a model with custom code, this requires executing code by the author of the model.",
     )
     parser.add_argument(
-        "--enforce_eager",
-        action="store_true"
+        '--enforce_eager',
+        action='store_true',
+        help='Always use eager-mode PyTorch. If False, '
+        'will use eager mode and CUDA graph in hybrid '
+        'for maximal performance and flexibility.'
+    )
+    parser.add_argument(
+        '--max_model_len',
+        type=int,
+        default=EngineArgs.max_model_len,
+        help='Model context length. If unspecified, will '
+        'be automatically derived from the model config.'
     )
     parser.add_argument(
         "--tasks",
@@ -115,6 +133,12 @@ def parse_args():
         help="Optional offset to start from when limiting the number of samples",
     )
     parser.add_argument(
+        "--save_every_k_tasks",
+        type=int,
+        default=-1,
+        help="Optional saving after every k tasks",
+    )
+    parser.add_argument(
         "--postprocess",
         action="store_false",
         help="Postprocess model outputs before execution, always on except during generation tests",
@@ -134,6 +158,12 @@ def parse_args():
         type=str,
         default=None,
         help="Path of file with previously generated solutions, if provided generation is skipped and only evaluation is done",
+    )
+    parser.add_argument(
+        "--load_data_path",
+        type=str,
+        default=None,
+        help="Path of additional data to load for the tasks",
     )
     parser.add_argument(
         "--metric_output_path",
@@ -228,9 +258,9 @@ def main():
         
         # here we generate code and save it (evaluation is optional but True by default)
         dict_precisions = {
-            "fp32": torch.float32,
-            "fp16": torch.float16,
-            "bf16": torch.bfloat16,
+            "fp32": 'float32',
+            "fp16": 'float16',
+            "bf16": 'bfloat16',
         }
         if args.precision not in dict_precisions:
             raise ValueError(
@@ -240,6 +270,8 @@ def main():
         model_kwargs = {
             "revision": args.revision,
             "trust_remote_code": args.trust_remote_code,
+            "tensor_parallel_size": args.tensor_parallel_size,
+            "dtype" : dict_precisions[args.precision],
         }
         
         # TODO: Quantization replace with vLLM 
@@ -268,7 +300,7 @@ def main():
                     model_kwargs["device_map"] = "auto"
                     print("Loading model in auto mode")
         """
-
+        args.model = MODEL_NAME_TO_LOCAL_DIR[args.model]
         model = LLM(
             args.model,
             enforce_eager = args.enforce_eager,
@@ -316,7 +348,8 @@ def main():
         # Some models like CodeGeeX2 have pad_token as a read-only property
         except AttributeError:
             print("Not setting pad_token to eos_token")
-            pass            
+            pass
+            
 
         evaluator = Evaluator(model, tokenizer, args)
 

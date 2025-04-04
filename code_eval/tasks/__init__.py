@@ -1,11 +1,13 @@
 import inspect
 from pprint import pprint
 
-from . import humaneval, mbpp
+from . import humaneval, humanevalpack, mbpp, codesearchnet
 
 TASK_REGISTRY = {
     **humaneval.create_all_tasks(),
+    **humanevalpack.create_all_tasks(),
     "mbpp": mbpp.MBPP,
+    **codesearchnet.create_all_tasks(),
 }
 
 ALL_TASKS = sorted(list(TASK_REGISTRY))
