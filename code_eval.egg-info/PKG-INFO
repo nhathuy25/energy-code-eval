@@ -12,6 +12,8 @@ Requires-Dist: pyext==0.5
 Requires-Dist: mosestokenizer==1.0.0
 Requires-Dist: huggingface_hub>=0.11.1
 Requires-Dist: fsspec>=2023.12.2
+Requires-Dist: sentence-transformers>=4.0.0
+Requires-Dist: bert-score>=0.3.11
 Provides-Extra: ds1000
 Requires-Dist: DateTime==4.7; extra == "ds1000"
 Requires-Dist: gensim==4.2.0; extra == "ds1000"

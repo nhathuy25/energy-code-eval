@@ -2,55 +2,6 @@ import re
 from io import StringIO
 import tokenize
 
-def apply_filters(dataset):
-    # Step 1: Create a "summary" element
-    def create_doc(example):
-        first_line = example['func_code_string'].split('\n')[0]
-        example['summary'] = first_line + '\n    """' + example['func_documentation_string'] + '\n    """'
-        example['prompt'] = remove_comments_and_docstrings(example['whole_func_string'], 'python')
-        return example
-    
-    dataset = dataset.map(create_doc)
-
-    # Step 2: Consider the first sentence in the comment as the function summary
-    def extract_first_sentence(example):
-        first_sentence = example['summary'].split('.')[0]
-        example['func_documentation_tokens'] = first_sentence.split()
-        return example
-
-    dataset = dataset.map(extract_first_sentence)
-
-    # Step 3: Remove data where functions are shorter than three lines or comments containing less than 3 tokens
-    def filter_by_length(example):
-        code_lines = example['func_code_string'].count('\n') + 1
-        doc_tokens_count = len(example['func_documentation_tokens'])
-        return code_lines >= 3 and doc_tokens_count >= 3
-
-    dataset = dataset.filter(filter_by_length)
-
-    # Step 4: Remove functions whose names contain the substring “test”
-    dataset = dataset.filter(lambda example: 'test' not in example['func_name'])
-
-    """# Step 5: Remove duplicates by comparing the Jaccard similarities of the functions
-    def remove_duplicates(dataset):
-        vectorizer = TfidfVectorizer().fit_transform(dataset['func_code_string'])
-        cosine_similarities = linear_kernel(vectorizer, vectorizer)
-        duplicate_indices = set()
-
-        for i in range(len(cosine_similarities)):
-            for j in range(i + 1, len(cosine_similarities)):
-                if cosine_similarities[i][j] > 0.8:  # Threshold for similarity
-                    duplicate_indices.add(j)
-
-        return dataset.filter(lambda _, idx: idx not in duplicate_indices, with_indices=True)
-
-    dataset = remove_duplicates(dataset)"""
-
-    # Reset index if needed
-    dataset = dataset.add_column('index', list(range(len(dataset))))
-
-    return dataset
-
 single = {'java': '//', 'python': '#', 'c': '//',
           'ruby': '#', 'javascript': '//', 'go': '//',
           'php': ['#', '//'],
@@ -62,7 +13,7 @@ multi = {'java': ['/*', '*/'], 'python': ['"""','"""','/*','*/'], 'c': ['/*', '*
           'erlang': [] , 'haskell': ['{-','-}'], 'prolog': []}
 
 """
-Function 'remove_comments_and_docstrings()' taken from "Source Code Summarization in the Era of Large Language Models"
+Function 'remove_comments_and_docstrings()' referred from "Source Code Summarization in the Era of Large Language Models"
 https://github.com/wssun/LLM4CodeSummarization/blob/main/util/remove_comments.py
 
 @article{Sun_Miao_Li_Zhang_Fang_Liu_Deng_Liu_Chen_2024, 

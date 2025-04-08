@@ -91,7 +91,7 @@ def parse_args():
         "--max_tokens",
         type=int,
         default=512,
-        help="Maximum length of generated sequence (prompt+generation)",
+        help="Maximum length of generated sequence",
     )
     parser.add_argument(
         "--tensor_parallel_size",
@@ -100,10 +100,20 @@ def parse_args():
         help="The number of GPUs to use for distributed execution with tensor parallelism",
     )
     parser.add_argument(
-        "--precision",
+        "--dtype",
         type=str,
-        default="fp16",
-        help="Model precision, from: fp32, fp16 or bf16",
+        default=EngineArgs.dtype,
+        choices=[
+            'auto', 'half', 'float16', 'bfloat16', 'float', 'float32'
+        ],
+        help='Data type for model weights and activations.\n\n'
+        '* "auto" will use FP16 precision for FP32 and FP16 models, and '
+        'BF16 precision for BF16 models.\n'
+        '* "half" for FP16. Recommended for AWQ quantization.\n'
+        '* "float16" is the same as "half".\n'
+        '* "bfloat16" for a balance between precision and range.\n'
+        '* "float" is shorthand for FP32 precision.\n'
+        '* "float32" for FP32 precision.'
     )
     parser.add_argument(
         "--load_in_8bit",
@@ -256,22 +266,12 @@ def main():
             results[task] = evaluator.evaluate(task)
     else:
         
-        # here we generate code and save it (evaluation is optional but True by default)
-        dict_precisions = {
-            "fp32": 'float32',
-            "fp16": 'float16',
-            "bf16": 'bfloat16',
-        }
-        if args.precision not in dict_precisions:
-            raise ValueError(
-                f"Non valid precision {args.precision}, choose from: fp16, fp32, bf16"
-            )
-
         model_kwargs = {
             "revision": args.revision,
             "trust_remote_code": args.trust_remote_code,
             "tensor_parallel_size": args.tensor_parallel_size,
-            "dtype" : dict_precisions[args.precision],
+            "dtype" : args.dtype,
+            "max_model_len": args.max_model_len,
         }
         
         # TODO: Quantization replace with vLLM 

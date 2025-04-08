@@ -109,7 +109,7 @@ def complete_code(
     batch_size=20,
     prefix="", 
     instruction_tokens=None,
-    postprocess=False, #Later when defined, set to True by default
+    postprocess=True, 
     save_every_k_tasks: int = -1,
     intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
     intermediate_save_generations_path: Optional[str] = None,
@@ -198,7 +198,6 @@ def update_code_gens(
     Take the generated outputs stocked in temporary 'gen_token_dict' and reorganised it in to 2D list of 'code_gens'.
     Supported continuous generation with intermediate_generations and postprocessing step.
     """
-    # TODO: To complete if postprocess is need
     for sample, generated_outputs in gen_token_dict.items():
         for s in generated_outputs:
             if INFILL_MODE or tokenizer.eos_token in task.stop_words:
@@ -219,8 +218,6 @@ def update_code_gens(
                 # TODO 
                 pass
             if postprocess:
-                # TODO: define post processing step
-                # limit_start will be applied here
                 code_gens[sample].append(
                     task.postprocess_generation(gen_code, int(sample) + limit_start)
                 )

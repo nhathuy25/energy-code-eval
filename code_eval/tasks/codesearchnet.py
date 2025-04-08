@@ -11,8 +11,8 @@ Homepage: https://github.com/github/CodeSearchNet
 """
 
 from code_eval.base import Task
-from .custom_metric.code_eval  import compute_code_eval
-from .utils import apply_filters, remove_comments_and_docstrings
+from .utils import remove_comments_and_docstrings
+import torch
 
 import os 
 
@@ -27,18 +27,18 @@ __CITATION = """
 }
 """
 
-LANGUAGES = ["python", "java", "js"]
+LANGUAGES = ["python", "java", "javascript"]
 
 LANGUAGE_TO_NAME = {
     "python": "Python",
-    "js": "js",
-    "java": "java",
+    "javascript": "JavaScript",
+    "java": "Java",
 }
 
 LANGUAGE_TO_EXTENSION = {
     "python": "py",
     "cpp": "cpp",
-    "js": "js",
+    "javasript": "js",
     "java": "java",
     "go": "go",
     "rust": "rs",
@@ -51,7 +51,7 @@ LANGUAGE_TO_STOP_WORDS = {
     # https://github.com/THUDM/CodeGeeX/blob/23ee51505a2bcd34d59d2e271b22e5bd91475462/codegeex/benchmark/utils.py#L185
     "cpp": [],
     # https://github.com/THUDM/CodeGeeX/blob/23ee51505a2bcd34d59d2e271b22e5bd91475462/codegeex/benchmark/utils.py#L188
-    "js": [],
+    "javascript": [],
     # https://github.com/THUDM/CodeGeeX/blob/23ee51505a2bcd34d59d2e271b22e5bd91475462/codegeex/benchmark/utils.py#L177
     "go": ["\n//", "\nfunc main(", "struct", "\nfunc"],
     # https://github.com/THUDM/CodeGeeX/blob/23ee51505a2bcd34d59d2e271b22e5bd91475462/codegeex/benchmark/utils.py#L169
@@ -62,7 +62,7 @@ LANGUAGE_TO_STOP_WORDS = {
 LANGUAGE_TO_TIMEOUT = {
     "python": 10,
     "cpp": 60,
-    "js": 10,
+    "javascript": 10,
     "java": 10,
     "go": 20,
     "rust": 300, # Necessary for first-time compilation of cargo
@@ -72,7 +72,7 @@ LANGUAGE_TO_TIMEOUT = {
 LANGUAGE_TO_NUM_WORKERS = {
     "python": 4,
     "cpp": 4,
-    "js": 4,
+    "javascript": 4,
     "java": 1,
     "go": 4,
     "rust": 1,
@@ -99,6 +99,11 @@ IMPORT_HELPER = {
         "from collections import *",
     ],
 }
+
+def mean_sentenceBERT(tensor: torch.Tensor):
+    diagonal = torch.diagonal(tensor)
+    mean = torch.mean(diagonal)
+    return mean.item()
 
 def create_all_tasks():
     codesearchnet = {f"codesearchnet-{language}": create_task(language) for language in LANGUAGES}
@@ -129,8 +134,6 @@ class GeneralCodeSearchNet(Task):
     def get_dataset(self):
         """ 
         Returns dataset for the task or an iterable of any object, that get_prompt can handle.
-        The original test dataset from CodeSearchNet corpus is noisy and requires a step of filtering, including
-        (1) remove
         """
         dataset = self.dataset["test"]
         dataset = dataset.select(range(300))
@@ -170,10 +173,6 @@ class GeneralCodeSearchNet(Task):
             raise ValueError(f"The --prompt argument {self.prompt} wasn't provided or isn't supported")
         return prompt.strip()
     
-
-    """def get_reference(self, doc):
-        return doc['docstring']"""
-    
     def get_reference(self, doc):
         """Builds the reference solution for the doc (sample from the test dataset).
         :param doc: dict[str: str]
@@ -196,7 +195,40 @@ class GeneralCodeSearchNet(Task):
         return generation[len(prompt):]
     
     def process_results(self, generations, references):
-        return super().process_results(generations, references)
-    
+        """Takes the list of LM generations and evaluates them against ground truth references,
+        returning the metric for the generations.
+        :param generations: list(list(str))
+            list of lists containing generations
+        :param references: list(str)
+            list of str containing refrences (not needed for APPS Task)
+        """
+        from sentence_transformers import SentenceTransformer, SimilarityFunction
+        from bert_score import score as BERTScore
+
+        sbert = SentenceTransformer("nomic-ai/CodeRankEmbed", trust_remote_code=True)
+        
+        candidates = [generation[0] for generation in generations]
+
+        embed_refs = sbert.encode(references)
+        embed_gens = sbert.encode(candidates)
+                
+        sbert.similarity_fn_name = SimilarityFunction.COSINE
+        cosine_score = mean_sentenceBERT(sbert.similarity(embed_refs, embed_gens))
+
+        sbert.similarity_fn_name = SimilarityFunction.EUCLIDEAN
+        euclidean_score = mean_sentenceBERT(sbert.similarity(embed_refs, embed_gens))
+
+        # BERTScore metric
+        _, _, f1 = BERTScore(references, candidates, lang = 'en')
+        f1_score = (torch.mean(f1)).item()
+
+        results = {
+            'cosine' : cosine_score,
+            'euclidean' : euclidean_score,
+            'BERTScore' : f1_score,
+        }
+
+        return results
+
 
 
