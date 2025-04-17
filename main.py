@@ -21,6 +21,7 @@ from code_eval.evaluator import Evaluator
 from code_eval.tasks import ALL_TASKS
 
 MODEL_NAME_TO_LOCAL_DIR = {
+    "codellama7": '/workdir/models/CodeLlama-7b-hf',
     "codellama7i": '/workdir/models/CodeLlama-7b-Instruct-hf',
     "codellama34i" : '/workdir/models/CodeLlama-34b-Instruct-hf',
     "deepseek_base" : '/workdir/models/DeepSeek-Coder-V2-Lite-Base',
@@ -86,12 +87,6 @@ def parse_args():
         type=int,
         default=1,
         help="Batch size for evaluation on each worker, can be larger for HumanEval",
-    )
-    parser.add_argument(
-        "--max_tokens",
-        type=int,
-        default=512,
-        help="Maximum length of generated sequence",
     )
     parser.add_argument(
         "--tensor_parallel_size",
@@ -216,7 +211,7 @@ def parse_args():
         help="Prompt type to use for generation in HumanEvalPack tasks",
     )
     parser.add_argument(
-        "--max_memory_per_gpu",
+        "--gpu_memory_utilization",
         type=str,
         default=None,
         help="Max memroy to allocate per gpu, you can also use 'auto'",
@@ -250,6 +245,9 @@ def main():
     transformers.logging.set_verbosity_error()
     datasets.logging.set_verbosity_error()
 
+    # April 2025: Use the V0 version of vLLM since V1 is still experimental
+    os.environ['VLLM_USE_V1'] = '0'
+
     if args.tasks is None:
         task_names = 'humaneval'
     else:
@@ -264,8 +262,7 @@ def main():
         evaluator = Evaluator(None, None, args)
         for task in task_names:
             results[task] = evaluator.evaluate(task)
-    else:
-        
+    else:        
         model_kwargs = {
             "revision": args.revision,
             "trust_remote_code": args.trust_remote_code,
@@ -274,40 +271,54 @@ def main():
             "max_model_len": args.max_model_len,
         }
         
-        # TODO: Quantization replace with vLLM 
-        """
-        if args.load_in_8bit:
-            print("Loading model in 8bit")
-            model_kwargs["load_in_8bit"] = args.load_in_8bit
-            model_kwargs["device_map"] = {"": accelerator.process_index}
-        elif args.load_in_4bit:
-            print("Loading model in 4bit")
-            model_kwargs["load_in_4bit"] = args.load_in_4bit
-            model_kwargs["torch_dtype"] = torch.float16
-            model_kwargs["bnb_4bit_compute_dtype"] = torch.float16            
-            model_kwargs["device_map"] = {"": accelerator.process_index}
-        else:
-            print(f"Loading model in {args.precision}")
-            model_kwargs["torch_dtype"] = dict_precisions[args.precision]
-
-            if args.max_memory_per_gpu:
-                if args.max_memory_per_gpu != "auto":
-                    model_kwargs["max_memory"] = get_gpus_max_memory(
-                        args.max_memory_per_gpu, accelerator.num_processes
-                    )
-                    model_kwargs["offload_folder"] = "offload"
-                else:
-                    model_kwargs["device_map"] = "auto"
-                    print("Loading model in auto mode")
-        """
-        args.model = MODEL_NAME_TO_LOCAL_DIR[args.model]
-        model = LLM(
-            args.model,
-            enforce_eager = args.enforce_eager,
-            **model_kwargs
-            )
+        if args.model in MODEL_NAME_TO_LOCAL_DIR:
+            args.model = MODEL_NAME_TO_LOCAL_DIR[args.model]
+    
+        if args.gpu_memory_utilization:
+            if args.gpu_memory_utilization != "auto":
+                model_kwargs["gpu_memory_utilization"] = get_gpus_max_memory(
+                    args.gpu_memory_utilization, args.tensor_parallel_size
+                )
+            else:
+                model_kwargs["gpu_memory_utilization"] = "auto"
+                print("Loading model in auto mode")
         
-        # TODO: decide whether to use Perf or not
+        # TODO: Quantization replace with vLLM 
+        if args.load_in_8bit:
+            print("Loading model in 8bit - Using HQQ 8W8A")
+
+            from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+
+            from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
+            set_vllm_onthefly_hqq_quant(weight_bits=8, group_size=None, quant_mode='dynamic', skip_modules=['lm_head']) #dynamic A8W8
+            
+            model_kwargs['dtype'] = torch.float16
+            model = LLM(args.model, enforce_eager=args.enforce_eager, **model_kwargs)
+            
+        elif args.load_in_4bit:
+            print("Loading model in 4bit - Using HQQ 4W16A")
+            # Source https://github.com/mobiusml/hqq?tab=readme-ov-file#vllm
+
+            from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+
+            from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
+            set_vllm_onthefly_hqq_quant(weight_bits=4, group_size=64, quant_mode='static', skip_modules=['lm_head']) #A16W4 
+
+            model_kwargs['dtype'] = torch.float16
+            model = LLM(args.model, enforce_eager=args.enforce_eager, **model_kwargs)
+
+        else:
+            print(f"Loading model in {args.dtype}")
+
+            model = LLM(
+                args.model,
+                enforce_eager = args.enforce_eager,
+                **model_kwargs
+                )
+        
+        # TODO: decide whether to use Peft or not
         """
         if args.peft_model:
             from peft import PeftModel  # dynamic import to avoid dependency on peft
