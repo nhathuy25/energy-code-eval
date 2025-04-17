@@ -4,3 +4,6 @@
 
 # Results dir
 results/
+
+__pycache__
+
