@@ -22,6 +22,9 @@ class EvalArguments:
     top_p: Optional[float] = field(
         default=1, metadata={"help": "Top-p parameter used for nucleus sampling."}
     )
+    max_tokens: Optional[int] = field(
+        default=256, metadata={"help": "Maximum length of generated sequence."}
+    )
     n_samples: Optional[int] = field(
         default=1,
         metadata={"help": "Number of completions to generate for each sample."},
@@ -32,3 +35,4 @@ class EvalArguments:
     seed: Optional[int] = field(
         default=None, metadata={"help": "Random seed used for evaluation."}
     )
+    

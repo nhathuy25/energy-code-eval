@@ -134,10 +134,9 @@ def complete_code(
         try:
             #inputs = input_tensors.cpu().detach().numpy().tolist()
             inputs = batch["content"]
-            sampling_params=SamplingParams(**gen_kwargs)
             generated_outputs = model.generate(
                 prompts=inputs,
-                sampling_params=sampling_params,
+                sampling_params=SamplingParams(**gen_kwargs),
                 use_tqdm=False
             )
         except ValueError as e:
