@@ -29,6 +29,24 @@ MODEL_NAME_TO_LOCAL_DIR = {
     "codestral" : '/workdir/models/Codestral-22B-v0.1',
 }
 
+
+class MultiChoice:
+    def __init__(self, choices):
+        self.choices = choices
+
+    # Simple wildcard support (linux filename patterns)
+    def __contains__(self, values):
+        for value in values.split(","):
+            if len(fnmatch.filter(self.choices, value)) == 0:
+                return False
+
+        return True
+
+    def __iter__(self):
+        for choice in self.choices:
+            yield choice
+
+
 def parse_args():
     parser = HfArgumentParser(EvalArguments)
 
@@ -75,7 +93,8 @@ def parse_args():
     parser.add_argument(
         "--tasks",
         default=None,
-        help=f"Evaluation tasks from humaneval or mbpp",
+        choices=MultiChoice(ALL_TASKS),
+        help=f"Evaluation tasks from {ALL_TASKS}",
     )
     parser.add_argument(
         "--instruction_tokens",

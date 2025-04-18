@@ -94,10 +94,13 @@ class TokenizedDataset(IterableDataset):
                     "task_id": int(sample),
                     "input_len": sum(outputs.attention_mask[sample])
                 }
-               
+        
         def _make_instruction_prompt(self, instruction, context, prefix=""):
             pass
             # TODO: Define later for prompt instruction fine-tunning
+
+    def __len__(self):
+        return int(self.n_tasks * self.n_copies)
 
 def complete_code(
     task,

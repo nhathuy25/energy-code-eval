@@ -63,7 +63,6 @@ def parallel_generations(
         "top_p": args.top_p,
         "top_k": args.top_k,
         "max_tokens": args.max_tokens,
-        "n" : args.n_samples,
         "stop_token_ids" : [tokenizer.eos_token_ids]
     }
     """
@@ -107,6 +106,9 @@ def parallel_generations(
     else:
         instruction_tokens = None
 
+
+    n_copies = ceil(args.n_samples / args.batch_size)
+
     # Define dataset loader for each line of task
     ds_tokenized = TokenizedDataset(
         task,
@@ -116,6 +118,7 @@ def parallel_generations(
         max_length=args.max_tokens,
         limit_start=args.limit_start + curr_sample_idx,
         n_tasks=n_tasks,
+        n_copies=n_copies,
         prefix=args.prefix,
         instruction_tokens=instruction_tokens
         )
