@@ -102,6 +102,12 @@ def parse_args():
         help="A series of instruction tokens used for instruction-tuning benchamrks separated by comma e.g. <user_message>,<end_user_message>,<assistant_message>",
     )
     parser.add_argument(
+        "--n_samples",
+        type=int,
+        default=1,
+        help="Number of completions to generate for each sample.",
+    )
+    parser.add_argument(
         "--batch_size",
         type=int,
         default=1,
@@ -380,7 +386,7 @@ def main():
             print("Not setting pad_token to eos_token")
             pass
             
-
+        # Initialize evaluator object
         evaluator = Evaluator(model, tokenizer, args)
 
         if (

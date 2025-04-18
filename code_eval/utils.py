@@ -129,10 +129,10 @@ def complete_code(
         enumerate(dataloader),
         total=math.ceil(
             #n_tasks * dataloader.dataset.n_copies / num_processes # Define later for parallel distribution
-            n_tasks * dataloader.dataset.n_copies
+            (n_tasks * dataloader.dataset.n_copies) / batch_size
         ),
     ):
-        input_tensors = batch["ids"][:, : batch["input_len"]] if tokenizer.padding_side == "right" else batch["ids"]
+        #input_tensors = [b["ids"][:, : b["input_len"]] if tokenizer.padding_side == "right" else b["ids"] for b in batch]
         # Define the generations here
         try:
             #inputs = input_tensors.cpu().detach().numpy().tolist()
@@ -140,12 +140,12 @@ def complete_code(
             generated_outputs = model.generate(
                 prompts=inputs,
                 sampling_params=SamplingParams(**gen_kwargs),
-                use_tqdm=False
+                use_tqdm=True
             )
         except ValueError as e:
             raise e
         # -- end generation --
-        generated_tasks = batch["task_id"].repeat(batch_size)
+        generated_tasks = batch["task_id"]
         
         for sample, generated_outputs in zip(generated_tasks, generated_outputs):
             gen_token_dict[sample].append(generated_outputs)
@@ -170,7 +170,7 @@ def complete_code(
             # reset gen_token_dict - prevent redundant decoding
             gen_token_dict = defaultdict(list)
 
-    # Adding and organised new generated outputs to 2D list 'code_gens' 
+    # Adding and organise generated outputs to 2D list 'code_gens' 
     code_gens = update_code_gens(
         task,
         tokenizer,
@@ -198,7 +198,8 @@ def update_code_gens(
 ):
     """
     Take the generated outputs stocked in temporary 'gen_token_dict' and reorganised it in to 2D list of 'code_gens'.
-    Supported continuous generation with intermediate_generations and postprocessing step.
+    Support intermediate_generations and postprocessing step to prepare the code for evaluation.
+    Original version of bigcode-evaluation-harness use this function to decode the generated tokens to string.
     """
     for sample, generated_outputs in gen_token_dict.items():
         for s in generated_outputs:
@@ -223,6 +224,9 @@ def update_code_gens(
                 code_gens[sample].append(
                     task.postprocess_generation(gen_code, int(sample) + limit_start)
                 )
-            else: 
+            else:
+                warnings.warn(
+                    "model output is not postprocessed, this might lower evaluation scores"
+                )
                 code_gens[sample].append(gen_code)
     return code_gens

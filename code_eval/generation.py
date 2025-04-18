@@ -107,8 +107,6 @@ def parallel_generations(
         instruction_tokens = None
 
 
-    n_copies = ceil(args.n_samples / args.batch_size)
-
     # Define dataset loader for each line of task
     ds_tokenized = TokenizedDataset(
         task,
@@ -118,13 +116,13 @@ def parallel_generations(
         max_length=args.max_tokens,
         limit_start=args.limit_start + curr_sample_idx,
         n_tasks=n_tasks,
-        n_copies=n_copies,
+        n_copies=args.n_samples,
         prefix=args.prefix,
         instruction_tokens=instruction_tokens
         )
     
     # Load dataset using torch.DataLoader, batch_size here is diff. from args.batch_size
-    ds_loader = DataLoader(ds_tokenized, batch_size=1)
+    ds_loader = DataLoader(ds_tokenized, batch_size=args.batch_size)
 
     generations = complete_code(
         task,

@@ -25,10 +25,6 @@ class EvalArguments:
     max_tokens: Optional[int] = field(
         default=256, metadata={"help": "Maximum length of generated sequence."}
     )
-    n_samples: Optional[int] = field(
-        default=1,
-        metadata={"help": "Number of completions to generate for each sample."},
-    )
     eos: Optional[str] = field(
         default="<|endoftext|>", metadata={"help": "end of sentence token."}
     )
