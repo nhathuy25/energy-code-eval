@@ -2,6 +2,7 @@ import os
 import fnmatch
 import json
 import warnings
+import time
 
 import datasets
 import torch
@@ -319,7 +320,6 @@ def main():
             set_vllm_onthefly_hqq_quant(weight_bits=8, group_size=None, quant_mode='dynamic', skip_modules=['lm_head']) #dynamic A8W8
             
             model_kwargs['dtype'] = torch.float16
-            model = LLM(args.model, enforce_eager=args.enforce_eager, **model_kwargs)
             
         elif args.load_in_4bit:
             print("Loading model in 4bit - Using HQQ 4W16A")
@@ -332,16 +332,18 @@ def main():
             set_vllm_onthefly_hqq_quant(weight_bits=4, group_size=64, quant_mode='static', skip_modules=['lm_head']) #A16W4 
 
             model_kwargs['dtype'] = torch.float16
-            model = LLM(args.model, enforce_eager=args.enforce_eager, **model_kwargs)
 
         else:
             print(f"Loading model in {args.dtype}")
 
-            model = LLM(
-                args.model,
-                enforce_eager = args.enforce_eager,
-                **model_kwargs
-                )
+        bclock = time.time()
+        model = LLM(
+            args.model,
+            enforce_eager = args.enforce_eager,
+            **model_kwargs
+            )
+        eclock = time.time()
+        model_loading_time = eclock - bclock
         
         # TODO: decide whether to use Peft or not
         """
@@ -386,7 +388,7 @@ def main():
             print("Not setting pad_token to eos_token")
             pass
             
-        # Initialize evaluator object
+
         evaluator = Evaluator(model, tokenizer, args)
 
         if (
@@ -407,6 +409,7 @@ def main():
                     # where list[i] = generated codes or empty
                     intermediate_generations = json.load(f_in)
 
+            bclock = time.time()
             if args.generation_only:
                 print("generation mode only")
                 generations, references = evaluator.generate_text(
@@ -424,9 +427,25 @@ def main():
                 results[task] = evaluator.evaluate(
                     task, intermediate_generations=intermediate_generations
                 )
+            eclock = time.time()
+            results[task]["generation_time"] = eclock - bclock
+
+    measurements = dict(total_execution_time=0.0,
+                        model_loading_time=model_loading_time,
+                        generation_time=0.0,
+                        execution_time=0.0,
+                        total_execution_time_per_task=0.0,
+                        generation_time_per_task=0.0,
+                        total_memory=0.0,
+                        peak_memory=0.0,
+                        flops=0.0,
+                        energy=0.0,
+                        power=0.0,
+                        total_num_tokens=0,)
 
     # Save all args to config
     results["config"] = vars(args)
+    results["measurements"] = measurements
     if not args.generation_only:
         dumped = json.dumps(results, indent=2)
         print(dumped)
