@@ -26,6 +26,25 @@ def nvml_is_available() -> bool:
         )
         """
         return False
+    
+    # Detect unofficial pynvml packages.
+    # If detected, this should be a critical error.
+    if not hasattr(pynvml, "_nvmlGetFunctionPointer"):
+        #logger.error("Unoffical pynvml package detected!")
+        raise ImportError(
+            "Unofficial pynvml package detected! "
+            "This causes conflicts with the official NVIDIA bindings. "
+            "Please remove with `pip uninstall pynvml` and instead use the official "
+            "bindings from NVIDIA: `nvidia-ml-py`. "
+        )
+
+    try:
+        pynvml.nvmlInit()
+        #logger.info("pynvml is available and initialized.")
+        return True
+    except pynvml.NVMLError as e:
+        #logger.info("pynvml is available but could not initialize NVML: %s.", e)
+        return False
 
 
 class GPUError(Exception):

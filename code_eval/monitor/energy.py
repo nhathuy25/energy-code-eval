@@ -14,14 +14,13 @@ from dataclasses import dataclass
 from functools import cached_property
 
 from code_eval.monitor.power import PowerMonitor
-from zeus.utils.logging import get_logger
+#from zeus.utils.logging import get_logger
 from code_eval.monitor.utils import sync_execution as sync_execution_fn
-from zeus.device import get_gpus, get_cpus, get_soc
-from zeus.device.gpu.common import ZeusGPUInitError, EmptyGPUs
-from zeus.device.cpu.common import ZeusCPUInitError, ZeusCPUNoPermissionError, EmptyCPUs
-from zeus.device.soc.common import ZeusSoCInitError, SoCMeasurement, EmptySoC
+from code_eval.monitor.device import get_gpus, get_cpus
+from code_eval.monitor.device.gpu import GPUError
+from code_eval.monitor.device.cpu import CPUError, EmptyCPUs
 
-logger = get_logger(__name__)
+#logger = get_logger(__name__)
 
 
 @dataclass
@@ -46,8 +45,6 @@ class Measurement:
     gpu_energy: dict[int, float]
     cpu_energy: dict[int, float] | None = None
     dram_energy: dict[int, float] | None = None
-
-    soc_energy: SoCMeasurement | None = None
 
     @cached_property
     def total_energy(self) -> float:
@@ -179,31 +176,17 @@ class EnergyMonitor:
         # Get GPU instances.
         try:
             self.gpus = get_gpus()
-        except ZeusGPUInitError:
-            self.gpus = EmptyGPUs()
-
+        except GPUError:
+            #self.gpus = EmptyGPUs() # TODO: Implement EmptyGPUs
+            raise GPUError(
+                "No GPUs found."
+            )
+        
         # Get CPU instance.
         try:
             self.cpus = get_cpus()
-        except ZeusCPUInitError:
+        except CPUError:
             self.cpus = EmptyCPUs()
-        except ZeusCPUNoPermissionError as err:
-            if cpu_indices:
-                raise RuntimeError(
-                    "Root privilege is required to read RAPL metrics. See "
-                    "https://ml.energy/zeus/getting_started/#system-privileges "
-                    "for more information or disable CPU measurement by passing cpu_indices=[] to "
-                    "ZeusMonitor"
-                ) from err
-            self.cpus = EmptyCPUs()
-
-        # Get an SoC instance, if an SoC is present on the host device.
-        self.soc_is_present = False
-        try:
-            self.soc = get_soc()
-            self.soc_is_present = True
-        except ZeusSoCInitError:
-            self.soc = EmptySoC()
 
         # Resolve GPU indices. If the user did not specify `gpu_indices`, use all available GPUs.
         self.gpu_indices = (
@@ -215,8 +198,6 @@ class EnergyMonitor:
             cpu_indices if cpu_indices is not None else list(range(len(self.cpus)))
         )
 
-        logger.info("Monitoring GPU indices %s.", self.gpu_indices)
-        logger.info("Monitoring CPU indices %s", self.cpu_indices)
 
         # Initialize loggers.
         if log_file is None:
@@ -225,7 +206,7 @@ class EnergyMonitor:
             if dir := os.path.dirname(log_file):
                 os.makedirs(dir, exist_ok=True)
             self.log_file = open(log_file, "w")
-            logger.info("Writing measurement logs to %s.", log_file)
+            #logger.info("Writing measurement logs to %s.", log_file)
             self.log_file.write(
                 f"start_time,window_name,elapsed_time,{','.join(map(lambda i: f'gpu{i}_energy', self.gpu_indices))}\n",
             )
@@ -304,9 +285,6 @@ class EnergyMonitor:
             if cpu_measurement.dram_mj is not None:
                 dram_energy_state[cpu_index] = cpu_measurement.dram_mj
 
-        if self.soc_is_present:
-            self.soc.beginWindow(key)
-
         # Add measurement state to dictionary.
         self.measurement_states[key] = MeasurementState(
             time=timestamp,
@@ -314,7 +292,7 @@ class EnergyMonitor:
             cpu_energy=cpu_energy_state or None,
             dram_energy=dram_energy_state or None,
         )
-        logger.debug("Measurement window '%s' started.", key)
+        #logger.debug("Measurement window '%s' started.", key)
 
     def end_window(
         self, key: str, sync_execution: bool = True, cancel: bool = False
@@ -339,11 +317,6 @@ class EnergyMonitor:
         except KeyError:
             raise ValueError(f"Measurement window '{key}' does not exist") from None
 
-        # If we're also tracking an SoC, end its window.
-        soc_energy_consumption: SoCMeasurement | None = None
-        if self.soc_is_present:
-            soc_energy_consumption = self.soc.endWindow(key)
-
         # Take instant power consumption measurements.
         # This, in theory, is introducing extra NVMLs call in the critical path
         # even if computation time is not so short. However, it is reasonable to
@@ -360,17 +333,12 @@ class EnergyMonitor:
 
         # If the measurement window is cancelled, return an empty Measurement object.
         if cancel:
-            logger.debug("Measurement window '%s' cancelled.", key)
-
-            # If we had a non-None SoC measurement object to report, empty its fields.
-            if soc_energy_consumption is not None:
-                soc_energy_consumption.zeroAllFields()
+            #logger.debug("Measurement window '%s' cancelled.", key)
 
             return Measurement(
                 time=0.0,
                 gpu_energy={gpu: 0.0 for gpu in self.gpu_indices},
                 cpu_energy={cpu: 0.0 for cpu in self.cpu_indices},
-                soc_energy=soc_energy_consumption,
             )
 
         end_time: float = time()
@@ -428,7 +396,7 @@ class EnergyMonitor:
                 stacklevel=1,
             )
 
-        logger.debug("Measurement window '%s' ended.", key)
+        #logger.debug("Measurement window '%s' ended.", key)
 
         # Add to log file.
         if self.log_file is not None:
@@ -443,6 +411,5 @@ class EnergyMonitor:
             time=time_consumption,
             gpu_energy=gpu_energy_consumption,
             cpu_energy=cpu_energy_consumption or None,
-            dram_energy=dram_energy_consumption or None,
-            soc_energy=soc_energy_consumption,
+            dram_energy=dram_energy_consumption or None
         )

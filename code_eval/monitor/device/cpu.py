@@ -8,7 +8,25 @@ import os
 from typing import Sequence, Literal
 from dataclasses import dataclass
 
+from functools import lru_cache
+
+RAPL_DIR = "/sys/class/powercap/intel-rapl"
+
+# Location of RAPL files when in a docker container. See
+# https://ml.energy/zeus/getting_started/#system-privileges for more details
+CONTAINER_RAPL_DIR = "/zeus_sys/class/powercap/intel-rapl"
+
+
+# Assuming a maximum power draw of 1000 Watts when we are polling every 0.1 seconds, the maximum
+# amount the RAPL counter would increase
+RAPL_COUNTER_MAX_INCREASE = 1000 * 1e6 * 0.1
+
 _cpus: CPUs | None = None
+
+
+class CPUError(Exception):
+    """Base exception for GPU-related errors."""
+    pass
 
 
 def get_current_cpu_index(pid: int | Literal["current"] = "current") -> int:
@@ -48,6 +66,38 @@ class CPU:
 
 class CPUs:
     pass
+
+
+class EmptyCPUs(CPUs):
+    """Empty CPUs management object to be used when CPUs management object is unavailable.
+
+    Calls to any methods will return a value error and the length of this object will be 0
+    """
+
+    def __init__(self) -> None:
+        """Instantiates empty CPUs object."""
+        pass
+
+    def __del__(self) -> None:
+        """Shuts down the Intel CPU monitoring."""
+        pass
+
+    @property
+    def cpus(self) -> Sequence[CPU]:
+        """Returns a list of CPU objects being tracked."""
+        return []
+
+    def getTotalEnergyConsumption(self, index: int) -> CpuDramMeasurement:
+        """Returns the total energy consumption of the specified powerzone. Units: mJ."""
+        raise ValueError("No CPUs available.")
+
+    def supportsGetDramEnergyConsumption(self, index: int) -> bool:
+        """Returns True if the specified CPU powerzone supports retrieving the subpackage energy consumption."""
+        raise ValueError("No CPUs available.")
+
+    def __len__(self) -> int:
+        """Returns 0 since the object is empty."""
+        return 0
 
 
 class CpuDramMeasurement:
@@ -100,3 +150,14 @@ class CpuDramMeasurement:
             return CpuDramMeasurement(self.cpu_mj / other, dram_mj)
         else:
             return NotImplemented
+        
+
+@lru_cache(maxsize=1)
+def rapl_is_available() -> bool:
+    """Check if RAPL is available."""
+    if not os.path.exists(RAPL_DIR) and not os.path.exists(CONTAINER_RAPL_DIR):
+        raise CPUError(
+            "RAPL is not supported on this CPU."
+        )
+        return False
+    return True

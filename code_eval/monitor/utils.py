@@ -6,8 +6,21 @@ from functools import lru_cache
 
 #from zeus.utils.logging import get_logger
 
-logger = get_logger(name=__name__)
+#logger = get_logger(name=__name__)
 MODULE_CACHE: dict[str, types.ModuleType] = {}
+
+@lru_cache(maxsize=1)
+def torch_is_available() -> bool:
+    try:
+        import torch
+        cuda_available = torch.cuda.is_available()
+        MODULE_CACHE["torch"] = torch
+        if not cuda_available:
+            raise RuntimeError("PyTorch is available but does not have CUDA support.")
+        return True
+    except ImportError as e:
+        return False
+
 
 def sync_execution(
     gpu_devices: list[int]
@@ -39,10 +52,10 @@ def sync_execution(
         sync_with: Deep learning framework to use to synchronize computations.
             Defaults to `"torch"`, in which case `torch.cuda.synchronize` will be used.
     """
-    
-    torch = MODULE_CACHE["torch"]
-    for device in gpu_devices:
-        torch.cuda.synchronize(device)
-    return
+    if torch_is_available():
+        torch = MODULE_CACHE["torch"]
+        for device in gpu_devices:
+            torch.cuda.synchronize(device)
+        return
 
     raise RuntimeError("No framework is available.")

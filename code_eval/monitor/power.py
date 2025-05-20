@@ -1,6 +1,6 @@
 """Monitor the power usage of GPUs.
-This file is 
-
+This file is a modified version of the original `zeus.monitor.power` script.
+Source: https://github.com/ml-energy/zeus/blob/master/zeus/monitor/power.py
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ import multiprocessing as mp
 import pandas as pd
 from sklearn.metrics import auc
 
-from zeus.utils.logging import get_logger
-from zeus.device import get_gpus
+#from zeus.utils.logging import get_logger
+from code_eval.monitor.device import get_gpus
 
 
 def infer_counter_update_period(gpu_indicies: list[int]) -> float:
@@ -27,7 +27,7 @@ def infer_counter_update_period(gpu_indicies: list[int]) -> float:
     period detected. Then, it returns half the period to ensure that the
     counter is polled at least twice per update period.
     """
-    logger = get_logger(__name__)
+    #logger = get_logger(__name__)
 
     # get gpus
     gpus = get_gpus()
@@ -37,16 +37,14 @@ def infer_counter_update_period(gpu_indicies: list[int]) -> float:
     gpu_models_covered = set()
     for index in gpu_indicies:
         if (model := gpus.getName(index)) not in gpu_models_covered:
-            logger.info(
-                "Detected %s, inferring NVML power counter update period.", model
-            )
+            #logger.info("Detected %s, inferring NVML power counter update period.", model)
             gpu_models_covered.add(model)
             detected_period = _infer_counter_update_period_single(index)
-            logger.info(
+            """logger.info(
                 "Counter update period for %s is %.2f s",
                 model,
                 detected_period,
-            )
+            )"""
             update_period = min(update_period, detected_period)
 
     # Target half the update period to ensure that the counter is enough.
@@ -54,10 +52,10 @@ def infer_counter_update_period(gpu_indicies: list[int]) -> float:
 
     # Anything less than ten times a second is probably too slow.
     if update_period > 0.1:
-        logger.warning(
+        """logger.warning(
             "Inferred update period (%.2f s) is too long. Using 0.1 s instead.",
             update_period,
-        )
+        )"""
         update_period = 0.1
     return update_period
 
@@ -136,13 +134,13 @@ class PowerMonitor:
         gpus = get_gpus()
 
         # Set up logging.
-        self.logger = get_logger(type(self).__name__)
+        #self.logger = get_logger(type(self).__name__)
 
         # Get GPUs
         self.gpu_indices = (
             gpu_indices if gpu_indices is not None else list(range(len(gpus)))
         )
-        self.logger.info("Monitoring power usage of GPUs %s", self.gpu_indices)
+        #self.logger.info("Monitoring power usage of GPUs %s", self.gpu_indices)
 
         # Infer the update period if necessary.
         if update_period is None:
