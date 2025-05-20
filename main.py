@@ -21,6 +21,12 @@ from code_eval.arguments import EvalArguments
 from code_eval.evaluator import Evaluator
 from code_eval.tasks import ALL_TASKS
 
+# Energy measurement
+from pynvml import *
+
+nvmlInit()
+handle = nvmlDeviceGetHandleByIndex(0)
+
 MODEL_NAME_TO_LOCAL_DIR = {
     "codellama7": '/workdir/models/CodeLlama-7b-hf',
     "codellama7i": '/workdir/models/CodeLlama-7b-Instruct-hf',
@@ -96,6 +102,11 @@ def parse_args():
         default=None,
         choices=MultiChoice(ALL_TASKS),
         help=f"Evaluation tasks from {ALL_TASKS}",
+    )
+    parser.add_argument(
+        "--no_stop",
+        action="store_true",
+        help="Not use stop words for interuppting generation",
     )
     parser.add_argument(
         "--instruction_tokens",
@@ -337,13 +348,18 @@ def main():
             print(f"Loading model in {args.dtype}")
 
         bclock = time.time()
+        start_energy = nvmlDeviceGetTotalEnergyConsumption(handle)
+
         model = LLM(
             args.model,
             enforce_eager = args.enforce_eager,
             **model_kwargs
             )
+        torch.cuda.synchronize()
         eclock = time.time()
         model_loading_time = eclock - bclock
+        model_loading_energy = (nvmlDeviceGetTotalEnergyConsumption(handle) - start_energy) / 1000
+
         
         # TODO: decide whether to use Peft or not
         """
@@ -409,7 +425,7 @@ def main():
                     # where list[i] = generated codes or empty
                     intermediate_generations = json.load(f_in)
 
-            bclock = time.time()
+            gen_bclock = time.time()
             if args.generation_only:
                 print("generation mode only")
                 generations, references = evaluator.generate_text(
@@ -427,20 +443,17 @@ def main():
                 results[task] = evaluator.evaluate(
                     task, intermediate_generations=intermediate_generations
                 )
-            eclock = time.time()
-            results[task]["generation_time"] = eclock - bclock
+                gen_eclock = time.time()
+                results[task]["generation_time"] = gen_eclock - gen_bclock
+        
+        tasks_execution_time = time.time() - gen_bclock
+        total_execution_time = time.time() - eclock
 
-    measurements = dict(total_execution_time=0.0,
+    measurements = dict(total_execution_time=total_execution_time,
                         model_loading_time=model_loading_time,
-                        generation_time=0.0,
-                        execution_time=0.0,
-                        total_execution_time_per_task=0.0,
-                        generation_time_per_task=0.0,
-                        total_memory=0.0,
                         peak_memory=0.0,
                         flops=0.0,
-                        energy=0.0,
-                        power=0.0,
+                        model_loading_energy=model_loading_energy,
                         total_num_tokens=0,)
 
     # Save all args to config
@@ -455,3 +468,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    
+nvmlShutdown()
