@@ -11,6 +11,7 @@ sentence-transformers>=4.0.0
 bert-score>=0.3.11
 hqq>=0.2.5
 gemlite>=0.4.4
+nvidia-ml-py>=12.570.0
 
 [ds1000]
 DateTime==4.7

@@ -193,8 +193,6 @@ def complete_code(
             # reset gen_token_dict - prevent redundant decoding
             gen_token_dict = defaultdict(list)
 
-        sleep(3)
-
     # Adding and organise generated outputs to 2D list 'code_gens' 
     code_gens = update_code_gens(
         task,

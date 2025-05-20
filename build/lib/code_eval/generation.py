@@ -65,15 +65,32 @@ def parallel_generations(
         "max_tokens": args.max_tokens,
         "stop_token_ids" : [tokenizer.eos_token_ids]
     }
-
+    """
+    stopping_criteria = []
+    # The input_length / start_length set to 0 for now will be adjusted later
     # Check if the task has a custom check_fn method for the stopping criteria
     if task.stop_words and tokenizer.eos_token:
-        task.stop_words.append(tokenizer.eos_token)   
+        task.stop_words.append(tokenizer.eos_token)    
+    
+    if hasattr(task, "check_fn"):
+        stopping_criteria.append(
+            EndOfFunctionCriteria(0, task.stop_words, tokenizer, task.check_fn)
+        )
+    #Stop words stopping criteria for generation.
+    #Experiment for the case of overgeneration of model
+    elif task.stop_words:
+        stopping_criteria.append(
+            EndOfFunctionCriteria(0, task.stop_words, tokenizer)
+        )
+    if hasattr(task, "max_length_multiplier") and task.max_length_multiplier:
+        stopping_criteria.append(
+            TooLongFunctionCriteria(0, task.max_length_multiplier)
+        )
+    
+    if stopping_criteria:
+        gen_kwargs["stopping_criteria"] = StoppingCriteriaList(stopping_criteria)
+    """
 
-    if args.no_stop:
-        gen_kwargs["stop"] = task.stop_words 
-    else:
-        gen_kwargs["ignore_eos"] = True
 
     # Instruction tokens is a set of 3 tokens: begin_token, end_token, assistant_token
     # TODO: define the use for instruction tokens
