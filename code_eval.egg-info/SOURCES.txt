@@ -15,9 +15,7 @@ code_eval.egg-info/dependency_links.txt
 code_eval.egg-info/requires.txt
 code_eval.egg-info/top_level.txt
 code_eval/monitor/__init__.py
-code_eval/monitor/device.py
 code_eval/monitor/energy.py
-code_eval/monitor/measure.py
 code_eval/monitor/power.py
 code_eval/monitor/utils.py
 code_eval/monitor/device/__init__.py

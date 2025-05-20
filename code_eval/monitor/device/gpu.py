@@ -1,4 +1,6 @@
-"""NVIDIA GPUs."""
+"""NVIDIA GPUs. Inspired from zeus.device.gpu.nvidia
+Source: https://github.com/ml-energy/zeus/tree/master/zeus/device/gpu
+"""
 
 from __future__ import annotations
 
@@ -10,7 +12,6 @@ from pathlib import Path
 from typing import Sequence
 from functools import lru_cache
 
-import httpx
 import pynvml
 
 @lru_cache(maxsize=1)
@@ -45,30 +46,6 @@ def _handle_nvml_errors(func):
 
     return wrapper
 
-def get_gpus(ensure_homogeneous: bool = False) -> GPUs:
-    """Initialize and return a singleton object for GPU management.
-
-    This function returns a GPU management object that aims to abstract
-    the underlying GPU vendor and their specific monitoring library
-    (pynvml for NVIDIA GPUs and amdsmi for AMD GPUs). Management APIs
-    are mapped to methods on the returned [`GPUs`][zeus.device.gpu.GPUs] object.
-
-    GPU availability is checked in the following order:
-
-    1. NVIDIA GPUs using `pynvml`
-    1. AMD GPUs using `amdsmi`
-    1. If both are unavailable, a `ZeusGPUInitError` is raised.
-
-    Args:
-        ensure_homogeneous (bool): If True, ensures that all tracked GPUs have the same name.
-    """
-    global _gpus
-    if _gpus is not None:
-        return _gpus
-
-    if nvml_is_available():
-        _gpus = GPUs(ensure_homogeneous)
-        return _gpus
 
 class GPU:
     _exception_map = {
@@ -136,7 +113,6 @@ class GPU:
         return pynvml.nvmlDeviceGetTotalEnergyConsumption(self.handle)
 
 
-
 class GPUs:
     def __init__(self, ensure_homogeneous: bool = False) -> None:
         """Initialize NVML and sets up the GPUs.
@@ -152,6 +128,32 @@ class GPUs:
         except pynvml.NVMLError as e:
             raise e
         
+    @property
+    def gpus(self) -> Sequence[GPU]:
+        """Return a list of NVIDIAGPU objects being tracked."""
+        return self._gpus
+
+    def _init_gpus(self) -> None:
+        # Must respect `CUDA_VISIBLE_DEVICES` if set
+        if (visible_device := os.environ.get("CUDA_VISIBLE_DEVICES")) is not None:
+            if not visible_device:
+                raise GPUError(
+                    "CUDA_VISIBLE_DEVICES is set to an empty string. "
+                    "It should either be unset or a comma-separated list of GPU indices."
+                )
+            if visible_device.startswith("MIG"):
+                raise GPUError(
+                    "CUDA_VISIBLE_DEVICES contains MIG devices. NVML (the library used by Zeus) "
+                    "currently does not support measuring the power or energy consumption of MIG "
+                    "slices. You can still measure the whole GPU by temporarily setting "
+                    "CUDA_VISIBLE_DEVICES to integer GPU indices and restoring it afterwards."
+                )
+            visible_indices = [int(idx) for idx in visible_device.split(",")]
+        else:
+            visible_indices = list(range(pynvml.nvmlDeviceGetCount()))
+        
+        self._gpus = [GPU(gpu_num) for gpu_num in visible_indices]
+
     def _ensure_homogeneous(self) -> None:
         """Ensures that all tracked GPUs are homogeneous in terms of name."""
         gpu_names = [gpu.getName() for gpu in self.gpus]
@@ -159,14 +161,27 @@ class GPUs:
         if len(set(gpu_names)) > 1:
             raise ValueError(f"Heterogeneous GPUs found: {gpu_names}")
         
+    def __del__(self) -> None:
+        """Shut down NVML."""
+        with contextlib.suppress(pynvml.NVMLError):
+            pynvml.nvmlShutdown()
+
+    def __len__(self) -> int:
+        """Return the number of GPUs being tracked."""
+        return len(self.gpus)
+
     def getName(self, gpu_index: int) -> str:
-        pass
+        """Return the name of the specified GPU."""
+        return self.gpus[gpu_index].getName()
 
     def getInstantPowerUsage(self, gpu_index: int) -> int:
-        pass
-
+        """Return the current power draw of the GPU. Units: mW."""
+        return self.gpus[gpu_index].getInstantPowerUsage()
+    
     def supportsGetTotalEnergyConsumption(self, gpu_index: int) -> bool:
-        pass
+        """Check if the GPU supports retrieving total energy consumption."""
+        return self.gpus[gpu_index].supportsGetTotalEnergyConsumption()
 
     def getTotalEnergyConsumption(self, gpu_index: int) -> int:
-        pass
+        """Return the total energy consumption of the GPU since driver load. Units: mJ."""
+        return self.gpus[gpu_index].getTotalEnergyConsumption()
