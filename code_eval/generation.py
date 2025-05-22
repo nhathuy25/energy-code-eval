@@ -7,7 +7,8 @@ import os
 from torch.utils.data.dataloader import DataLoader
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-from code_eval.utils import TokenizedDataset, complete_code, write_jsonl
+from code_eval.utils import TokenizedDataset, complete_code, export_metrics
+from code_eval.monitor import EnergyMonitor, Measurement, PowerMonitor
 
 class EndOfFunctionCriteria(StoppingCriteria):
     """Custom `StoppingCriteria` which checks if all generated functions in the batch are completed."""
@@ -48,6 +49,7 @@ def parallel_generations(
         save_every_k_tasks: int = -1,
         intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
         intermediate_save_generations_path: Optional[str] = None,
+        energy_monitor: Optional[EnergyMonitor] = None,
 ):
     if args.load_generations_path:
         # load generated code
@@ -70,7 +72,7 @@ def parallel_generations(
     if task.stop_words and tokenizer.eos_token:
         task.stop_words.append(tokenizer.eos_token)   
 
-    if args.no_stop:
+    if not args.no_stop:
         gen_kwargs["stop"] = task.stop_words 
     else:
         gen_kwargs["ignore_eos"] = True
@@ -105,7 +107,11 @@ def parallel_generations(
         )
     
     # Load dataset using torch.DataLoader, batch_size here is diff. from args.batch_size
-    ds_loader = DataLoader(ds_tokenized, batch_size=args.batch_size)
+    if args.batch_size:
+        ds_loader = DataLoader(ds_tokenized, batch_size=args.batch_size)
+    else:
+        # Load in one batch and execute all sequences in one go with vLLM
+        ds_loader = DataLoader(ds_tokenized, batch_size=len(ds_tokenized))
 
     generations, mesurements = complete_code(
         task,
@@ -121,14 +127,15 @@ def parallel_generations(
         save_every_k_tasks=save_every_k_tasks,
         intermediate_generations=intermediate_generations,
         intermediate_save_generations_path=intermediate_save_generations_path,
+        energy_monitor=energy_monitor,
         **gen_kwargs,
     )
-
+    
     # Save the final generations
     model_name = args.model.split("/")[-1]
     if args.load_in_4bit:
-        write_jsonl(mesurements, filename=f'energy_{model_name}_bs-{args.batch_size}_hqq.jsonl')
+        export_metrics(mesurements, filename=f'energy_{model_name}_bs-{args.batch_size}_hqq.jsonl')
     else:
-        write_jsonl(mesurements, filename=f'energy_{model_name}_bs-{args.batch_size}.jsonl')
-
+        export_metrics(mesurements, filename=f'energy_{model_name}_bs-{args.batch_size}.jsonl')
+    
     return generations

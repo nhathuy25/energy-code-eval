@@ -8,6 +8,8 @@ from typing import List
 
 from code_eval import tasks
 from code_eval.generation import parallel_generations
+from code_eval.monitor import EnergyMonitor
+from code_eval.utils import RESULT_DIR
 
 _WARNING = """
 ################################################################################
@@ -32,7 +34,8 @@ class Evaluator:
         self.model = model
         self.tokenizer = tokenizer
         self.args = args
-
+        self.model_name = os.path.basename(args.model)
+    
         # setup arguments
         self.metric_output_path = args.metric_output_path
 
@@ -65,6 +68,17 @@ class Evaluator:
         intermediate_save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}_intermediate.json"
         curr_sample_idx = len(curr_generations)
 
+        # Set up energy monitor
+        if not self.args.no_monitor:
+            self.energy_monitor = EnergyMonitor(
+                gpu_indices=None,
+                cpu_indices=None,
+                log_file=RESULT_DIR["energy"] + f'{self.model_name}_{task_name}.csv'
+            )
+        else:
+            self.energy_monitor = None
+            print("Energy monitor is disabled")
+
         generations = parallel_generations(
             task,
             dataset,
@@ -76,6 +90,7 @@ class Evaluator:
             save_every_k_tasks=self.args.save_every_k_tasks,
             intermediate_generations=curr_generations,
             intermediate_save_generations_path=intermediate_save_generations_path,
+            energy_monitor=self.energy_monitor,
         )
 
         if len(generations[0]) > self.args.n_samples:

@@ -10,22 +10,32 @@ import transformers
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    HfArgumentParser,
 )
 
 from vllm import LLM, SamplingParams
 from vllm.engine.arg_utils import EngineArgs
 from vllm.config import ModelConfig
 
-from code_eval.arguments import EvalArguments
+from code_eval.arguments import parse_args
 from code_eval.evaluator import Evaluator
 from code_eval.tasks import ALL_TASKS
-
+from code_eval.monitor import PowerMonitor
 # Energy measurement
 from pynvml import *
 
+# April 2025: Use the V0 version of vLLM since V1 is still experimental
+os.environ['VLLM_USE_V1'] = '0'
+
 nvmlInit()
 handle = nvmlDeviceGetHandleByIndex(0)
+
+CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
+
+RESULT_DIR = {
+    "correctness": f'{CURRENT_PATH}/results/correctenss/',
+    "speed": f'{CURRENT_PATH}/results/speed/',
+    "energy": f'{CURRENT_PATH}/results/energy/',
+}
 
 MODEL_NAME_TO_LOCAL_DIR = {
     "codellama7": '/workdir/models/CodeLlama-7b-hf',
@@ -35,230 +45,6 @@ MODEL_NAME_TO_LOCAL_DIR = {
     "deepseek_instruct" : '/workdir/models/DeepSeek-Coder-V2-Lite-Instruct',
     "codestral" : '/workdir/models/Codestral-22B-v0.1',
 }
-
-
-class MultiChoice:
-    def __init__(self, choices):
-        self.choices = choices
-
-    # Simple wildcard support (linux filename patterns)
-    def __contains__(self, values):
-        for value in values.split(","):
-            if len(fnmatch.filter(self.choices, value)) == 0:
-                return False
-
-        return True
-
-    def __iter__(self):
-        for choice in self.choices:
-            yield choice
-
-
-def parse_args():
-    parser = HfArgumentParser(EvalArguments)
-
-    parser.add_argument(
-        "--model",
-        default="CodeLlama-7b",
-        help="Model to evaluate, provide a repo name in Hugging Face hub or a local path",
-    )
-    parser.add_argument(
-        "--peft_model",
-        type=str,
-        default=None,
-        help="Adapter to the PEFT base model. Can be utilized for loading PEFT adapters such as a LoRA trained model. The --model parameter needs to be the base model.",
-    )
-    parser.add_argument(
-        "--revision",
-        default=None,
-        help="Model revision to use",
-    )
-    parser.add_argument(
-        "--use_auth_token",
-        action="store_true",
-        help="Use the token generated when running `huggingface-cli login` (necessary for private model).",
-    )
-    parser.add_argument(
-        "--trust_remote_code",
-        action="store_true",
-        help="Use a model with custom code, this requires executing code by the author of the model.",
-    )
-    parser.add_argument(
-        '--enforce_eager',
-        action='store_true',
-        help='Always use eager-mode PyTorch. If False, '
-        'will use eager mode and CUDA graph in hybrid '
-        'for maximal performance and flexibility.'
-    )
-    parser.add_argument(
-        '--max_model_len',
-        type=int,
-        default=EngineArgs.max_model_len,
-        help='Model context length. If unspecified, will '
-        'be automatically derived from the model config.'
-    )
-    parser.add_argument(
-        "--tasks",
-        default=None,
-        choices=MultiChoice(ALL_TASKS),
-        help=f"Evaluation tasks from {ALL_TASKS}",
-    )
-    parser.add_argument(
-        "--no_stop",
-        action="store_true",
-        help="Not use stop words for interuppting generation",
-    )
-    parser.add_argument(
-        "--instruction_tokens",
-        default=None,
-        help="A series of instruction tokens used for instruction-tuning benchamrks separated by comma e.g. <user_message>,<end_user_message>,<assistant_message>",
-    )
-    parser.add_argument(
-        "--n_samples",
-        type=int,
-        default=1,
-        help="Number of completions to generate for each sample.",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=1,
-        help="Batch size for evaluation on each worker, can be larger for HumanEval",
-    )
-    parser.add_argument(
-        "--tensor_parallel_size",
-        type=int,
-        default=1,
-        help="The number of GPUs to use for distributed execution with tensor parallelism",
-    )
-    parser.add_argument(
-        "--dtype",
-        type=str,
-        default=EngineArgs.dtype,
-        choices=[
-            'auto', 'half', 'float16', 'bfloat16', 'float', 'float32'
-        ],
-        help='Data type for model weights and activations.\n\n'
-        '* "auto" will use FP16 precision for FP32 and FP16 models, and '
-        'BF16 precision for BF16 models.\n'
-        '* "half" for FP16. Recommended for AWQ quantization.\n'
-        '* "float16" is the same as "half".\n'
-        '* "bfloat16" for a balance between precision and range.\n'
-        '* "float" is shorthand for FP32 precision.\n'
-        '* "float32" for FP32 precision.'
-    )
-    parser.add_argument(
-        "--load_in_8bit",
-        action="store_true",
-        help="Load model in 8bit",
-    )
-    parser.add_argument(
-        "--load_in_4bit",
-        action="store_true",
-        help="Load model in 4bit",
-    )
-    parser.add_argument(
-        "--left_padding",
-        action="store_true",
-        help="Force left padding, needed for models like chatglm3-6b",
-    )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        help="Number of samples to solve and evaluate from the benchmark",
-    )
-    parser.add_argument(
-        "--limit_start",
-        type=int,
-        default=0,
-        help="Optional offset to start from when limiting the number of samples",
-    )
-    parser.add_argument(
-        "--save_every_k_tasks",
-        type=int,
-        default=-1,
-        help="Optional saving after every k tasks",
-    )
-    parser.add_argument(
-        "--postprocess",
-        action="store_false",
-        help="Postprocess model outputs before execution, always on except during generation tests",
-    )
-    parser.add_argument(
-        "--allow_code_execution",
-        action="store_true",
-        help="Allow code evaluation to execute external/untrusted Python code on your machine",
-    )
-    parser.add_argument(
-        "--generation_only",
-        action="store_true",
-        help="Do code generation but no evaluation",
-    )
-    parser.add_argument(
-        "--load_generations_path",
-        type=str,
-        default=None,
-        help="Path of file with previously generated solutions, if provided generation is skipped and only evaluation is done",
-    )
-    parser.add_argument(
-        "--load_data_path",
-        type=str,
-        default=None,
-        help="Path of additional data to load for the tasks",
-    )
-    parser.add_argument(
-        "--metric_output_path",
-        type=str,
-        default="evaluation_results.json",
-        help="Path to save the results",
-    )
-    parser.add_argument(
-        "--save_generations",
-        action="store_true",
-        help="Whether to save code generations",
-    )
-    parser.add_argument(
-        "--load_generations_intermediate_paths",
-        type=str,
-        nargs="*",
-        help="List of paths for saving the intermediate code generations",
-    )
-    parser.add_argument(
-        "--save_generations_path",
-        type=str,
-        default="generations.json",
-        help="Path for saving the code generations",
-    )
-    parser.add_argument(
-        "--save_references",
-        action="store_true",
-        help="Whether to save reference solutions/tests",
-    )
-    parser.add_argument(
-        "--save_references_path",
-        type=str,
-        default="references.json",
-        help="Path for saving the references solutions/tests",
-    )
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        default="prompt",
-        help="Prompt type to use for generation in HumanEvalPack tasks",
-    )
-    parser.add_argument(
-        "--gpu_memory_utilization",
-        type=str,
-        default=None,
-        help="Max memroy to allocate per gpu, you can also use 'auto'",
-    )
-    parser.add_argument(
-        "--check_references",
-        action="store_true",
-        help="Don't run generation but benchmark groundtruth (useful for debugging)",
-    )
-    return parser.parse_args()
 
 
 def pattern_match(patterns, source_list):
@@ -282,8 +68,6 @@ def main():
     transformers.logging.set_verbosity_error()
     datasets.logging.set_verbosity_error()
 
-    # April 2025: Use the V0 version of vLLM since V1 is still experimental
-    os.environ['VLLM_USE_V1'] = '0'
 
     if args.tasks is None:
         task_names = 'humaneval'
@@ -306,10 +90,14 @@ def main():
             "tensor_parallel_size": args.tensor_parallel_size,
             "dtype" : args.dtype,
             "max_model_len": args.max_model_len,
+            "max_num_seqs": args.max_num_seqs,
+            "num_scheduler_steps": args.num_scheduler_steps,
+            "enable_chunked_prefill": args.enable_chunked_prefill,
         }
         
         if args.model in MODEL_NAME_TO_LOCAL_DIR:
             args.model = MODEL_NAME_TO_LOCAL_DIR[args.model]
+        model_name = os.path.basename(args.model)
     
         if args.gpu_memory_utilization:
             if args.gpu_memory_utilization != "auto":
@@ -325,24 +113,24 @@ def main():
             print("Loading model in 8bit - Using HQQ 8W8A")
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.MARLIN)
 
             from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
             set_vllm_onthefly_hqq_quant(weight_bits=8, group_size=None, quant_mode='dynamic', skip_modules=['lm_head']) #dynamic A8W8
             
-            model_kwargs['dtype'] = torch.float16
+            model_kwargs['dtype'] = torch.bfloat16
             
         elif args.load_in_4bit:
             print("Loading model in 4bit - Using HQQ 4W16A")
             # Source https://github.com/mobiusml/hqq?tab=readme-ov-file#vllm
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.MARLIN)
 
             from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
             set_vllm_onthefly_hqq_quant(weight_bits=4, group_size=64, quant_mode='static', skip_modules=['lm_head']) #A16W4 
 
-            model_kwargs['dtype'] = torch.float16
+            model_kwargs['dtype'] = torch.bfloat16
 
         else:
             print(f"Loading model in {args.dtype}")
@@ -404,7 +192,13 @@ def main():
             print("Not setting pad_token to eos_token")
             pass
             
-
+        if not args.no_monitor:
+            power_monitor = PowerMonitor(
+                gpu_indices=args.gpu_indices,
+                update_period=args.update_period,
+                power_csv_path=RESULT_DIR["energy"] +f'power/{model_name}.csv'
+            )
+            
         evaluator = Evaluator(model, tokenizer, args)
 
         if (
@@ -426,6 +220,7 @@ def main():
                     intermediate_generations = json.load(f_in)
 
             gen_bclock = time.time()
+
             if args.generation_only:
                 print("generation mode only")
                 generations, references = evaluator.generate_text(
@@ -446,6 +241,7 @@ def main():
                 gen_eclock = time.time()
                 results[task]["generation_time"] = gen_eclock - gen_bclock
         
+        power_monitor._stop()
         tasks_execution_time = time.time() - gen_bclock
         total_execution_time = time.time() - eclock
 
@@ -458,7 +254,7 @@ def main():
 
     # Save all args to config
     results["config"] = vars(args)
-    results["measurements"] = measurements
+    results["main.py measurements"] = measurements
     if not args.generation_only:
         dumped = json.dumps(results, indent=2)
         print(dumped)

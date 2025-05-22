@@ -13,7 +13,16 @@ from vllm import SamplingParams
 from vllm.outputs import RequestOutput
 
 from pynvml import *
+from code_eval.monitor import EnergyMonitor, Measurement, PowerMonitor
 from time import time, sleep
+
+PARDIR = os.path.dirname(os.path.dirname(__file__))
+
+RESULT_DIR = {
+    "correctness": f'{PARDIR}/results/correctenss/',
+    "speed": f'{PARDIR}/results/speed/',
+    "energy": f'{PARDIR}/results/energy/',
+}
 
 INFILL_MODE = False
 INSTRUCTION_MODE = False
@@ -112,13 +121,14 @@ def complete_code(
     dataloader,
     n_tasks,
     limit_start=0,
-    batch_size=20,
+    batch_size=1,
     prefix="", 
     instruction_tokens=None,
     postprocess=True, 
     save_every_k_tasks: int = -1,
     intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
     intermediate_save_generations_path: Optional[str] = None,
+    energy_monitor: Optional[EnergyMonitor] = None,
     **gen_kwargs
 ):
     """
@@ -130,41 +140,52 @@ def complete_code(
     gen_token_dict = defaultdict(list) # dict of list of generated tokens
 
     # Initialize GPU monitor
-    handle = nvmlDeviceGetHandleByIndex(0)
-    mesurements = []
-    num_tokens_batch = 0
+    """handle = nvmlDeviceGetHandleByIndex(0)
+    mesurements = []"""
+    num_samples = n_tasks * dataloader.dataset.n_copies
+    
+    # If not assign batch size, set it to the number of samples, exist 1 batch only 
+    # which is the whole dataset
+    if batch_size == None:
+        batch_size = num_samples
+        
+    measurements : List[Measurement] = []
 
     for step, batch in tqdm(
         enumerate(dataloader),
         total=math.ceil(
             #n_tasks * dataloader.dataset.n_copies / num_processes # Define later for parallel distribution
-            (n_tasks * dataloader.dataset.n_copies) / batch_size
+            num_samples / batch_size
         ),
     ):
         #input_tensors = [b["ids"][:, : b["input_len"]] if tokenizer.padding_side == "right" else b["ids"] for b in batch]
         # Define the generations here
         try:
-            #inputs = input_tensors.cpu().detach().numpy().tolist()
+            #inputs = input_tensors.cpu().detach().numpy().tolist() # Deprecated in vLLM
             inputs = batch["content"]
-            start_time = time()
-            start_energy = nvmlDeviceGetTotalEnergyConsumption(handle)
+            # Begin monitoring energy
+            energy_key = f"batch_{step}"
+            if energy_monitor:
+                energy_monitor.begin_window(key=energy_key)
             generated_outputs = model.generate(
                 prompts=inputs,
                 sampling_params=SamplingParams(**gen_kwargs),
                 use_tqdm=True
             )
-            num_tokens_batch = sum(len(generated_outputs[i].outputs[0].token_ids) for i in range(len(generated_outputs)))
+            """
+            num_in_tokens = sum(len(generated_outputs[i].prompt_token_ids) for i in range(len(generated_outputs)))
+            num_out_tokens = sum(len(generated_outputs[i].outputs[0].token_ids) for i in range(len(generated_outputs)))
             torch.cuda.synchronize()
             elapsed_time = time() - start_time
-            energy = (nvmlDeviceGetTotalEnergyConsumption(handle) - start_energy) / 1000 # convert to Joules
-            mesurements.append({
-                "batch": step,
-                "num_tokens_generated": num_tokens_batch,
-                "start_time": start_time,
-                "elapsed_time": elapsed_time,
-                "energy": energy, 
-                "energy_per_token": energy / num_tokens_batch,
-            })
+            energy = (nvmlDeviceGetTotalEnergyConsumption(handle) - start_energy) / 1000 # convert to Joules"""
+            
+            if energy_monitor:
+                # Close batch's energy monitoring window
+                batch_measurements: Measurement = energy_monitor.end_window(key=energy_key, generated_outputs=generated_outputs)
+                
+                measurements.append(
+                    batch_measurements
+                )
         except ValueError as e:
             raise e
         # -- end generation --
@@ -193,8 +214,6 @@ def complete_code(
             # reset gen_token_dict - prevent redundant decoding
             gen_token_dict = defaultdict(list)
 
-        sleep(3)
-
     # Adding and organise generated outputs to 2D list 'code_gens' 
     code_gens = update_code_gens(
         task,
@@ -209,7 +228,7 @@ def complete_code(
 
     
     generations.extend(code_gens)
-    return generations, mesurements
+    return generations, measurements
 
 # TODO : define post processing step
 def update_code_gens(
@@ -258,10 +277,14 @@ def update_code_gens(
     return code_gens
 
 
-def write_jsonl(mesurements: Iterable[Dict], filename='test_gpu.jsonl'):
+def export_metrics(mesurements: Iterable[Dict], filename=None, export_type='csv'):
     fp = '/workdir/energy-code-eval/results/monitoring/' + filename
-    with open(fp, 'wb') as f:
-        for mesurement in mesurements:
-            f.write((json.dumps(mesurement) + '\n').encode('utf-8'))
-            
-        print(f'Measurement saved to {fp}')
+    try:
+        with open(fp, 'wb') as f:
+            for mesurement in mesurements:
+                f.write((json.dumps(mesurement) + '\n').encode('utf-8'))
+                
+            print(f'Measurement saved to {fp}')
+    except Exception as e:
+        print(f"Error exporting metrics: {e}")
+
