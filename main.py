@@ -20,6 +20,7 @@ from code_eval.arguments import parse_args
 from code_eval.evaluator import Evaluator
 from code_eval.tasks import ALL_TASKS
 from code_eval.monitor import PowerMonitor
+from code_eval.utils import RESULT_DIR
 # Energy measurement
 from pynvml import *
 
@@ -31,11 +32,9 @@ handle = nvmlDeviceGetHandleByIndex(0)
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
-RESULT_DIR = {
-    "correctness": f'{CURRENT_PATH}/results/correctenss/',
-    "speed": f'{CURRENT_PATH}/results/speed/',
-    "energy": f'{CURRENT_PATH}/results/energy/',
-}
+#Create the results directory if they don't exist
+for path in RESULT_DIR.values():
+    os.makedirs(path, exist_ok=True)
 
 MODEL_NAME_TO_LOCAL_DIR = {
     "codellama7": '/workdir/models/CodeLlama-7b-hf',

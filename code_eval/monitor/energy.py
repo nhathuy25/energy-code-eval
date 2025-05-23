@@ -22,6 +22,7 @@ from code_eval.monitor.device import get_gpus, get_cpus
 from code_eval.monitor.device.gpu import GPUError
 from code_eval.monitor.device.cpu import CPUError, EmptyCPUs
 
+
 #logger = get_logger(__name__)
 
 
@@ -43,7 +44,7 @@ class Measurement:
             CPU measurement is not available or DRAM measurement is not available.
         num_in_tokens: Number of input tokens processed during the measurement window.
         num_out_tokens: Number of output tokens generated during the measurement window.
-        ttft: Time to first token (in seconds)
+        first_token_time: Time to first token (in seconds)
     """
 
     time: float
@@ -52,7 +53,8 @@ class Measurement:
     dram_energy: dict[int, float] | None = None
     num_in_tokens: int = 0 
     num_out_tokens: int = 0
-    ttft: float | None = None # time to first token
+    first_token_time: float | None = None # time to first token
+    finished_time: float | None = None
 
     @cached_property
     def total_energy(self) -> float:
@@ -216,7 +218,7 @@ class EnergyMonitor:
             self.log_file = open(log_file, "w")
             #logger.info("Writing measurement logs to %s.", log_file)
             self.log_file.write(
-                f"start_time,window_name,elapsed_time,{','.join(map(lambda i: f'gpu{i}_energy', self.gpu_indices))},num_in_tokens,num_out_tokens\n",
+                f"start_time,window_name,elapsed_time,{','.join(map(lambda i: f'gpu{i}_energy', self.gpu_indices))},num_in_tokens,num_out_tokens,first_token_time,finished_time\n",
             )
             self.log_file.flush()
 
@@ -349,6 +351,8 @@ class EnergyMonitor:
                 cpu_energy={cpu: 0.0 for cpu in self.cpu_indices},
                 num_in_tokens=0,
                 num_out_tokens=0,
+                first_token_time=0.0,
+                finished_time=0.0
             )
 
         end_time: float = time()
@@ -412,9 +416,17 @@ class EnergyMonitor:
         if generated_outputs is not None:
             num_in_tokens = sum(len(generated_outputs[i].prompt_token_ids) for i in range(len(generated_outputs)))
             num_out_tokens = sum(len(generated_outputs[i].outputs[0].token_ids) for i in range(len(generated_outputs)))
+            # Collect the first generated token time of the first served sequence in the batch
+            # (if there are multiple sequences in the batch, the first token time is the erliest one).
+            first_token_time = min([generated_outputs[i].metrics.first_token_time for i in range(len(generated_outputs))])
+            # Collect the end time of the batch
+            end_time = max([generated_outputs[i].metrics.finished_time for i in range(len(generated_outputs))])
+            
         else:
             num_in_tokens = 0
             num_out_tokens = 0
+            first_token_time = 0.0
+            end_time = 0.0
             warnings.warn(
                 "No generated outputs tokens provided or found, values of number of input"
                 " and output tokens will be set to 0"
@@ -427,6 +439,8 @@ class EnergyMonitor:
             dram_energy=dram_energy_consumption or None,
             num_in_tokens=num_in_tokens,
             num_out_tokens=num_out_tokens,
+            first_token_time=first_token_time,
+            finished_time=end_time
         )
         #logger.debug("Measurement window '%s' ended.", key)
 
@@ -434,19 +448,25 @@ class EnergyMonitor:
             self.log_file.write(
                 f"{start_time},{key},{time_consumption},"
                 + ",".join(str(gpu_energy_consumption[gpu]) for gpu in self.gpu_indices)
-                + f",{num_in_tokens},{num_out_tokens}"
+                + f",{num_in_tokens},{num_out_tokens},{first_token_time},{end_time}"
                 + "\n"
             )
             self.log_file.flush()
 
         return measurement
 
-    def write_log(self, ms: Measurement, key: str) -> None:
+    def write_speed_log(self, ms: Measurement, key: str) -> None:
+        """
+        Save the measurement of throughput and latency to a seperate log file
+        """
         if self.log_file is not None:
-            self.log_file.write(
+            filepath = os.path.join(
+                os.path.pardir(os.path.pardir(__file__)), self.log_file.name
+            )
+            filepath.write(
                 f"{ms.start_time},{key},{ms.time_consumption},"
                 + ",".join(str(ms.gpu_energy_consumption[gpu]) for gpu in self.gpu_indices)
                 + f",{ms.num_in_tokens},{ms.num_out_tokens}"
                 + "\n"
             )
-            self.log_file.flush()
+            filepath.flush()

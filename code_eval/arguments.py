@@ -304,6 +304,9 @@ def parse_args():
         "--prompt",
         type=str,
         default="prompt",
+        choices=[
+            'instruct', 'deepseek', 'codellama', 'codestral'
+        ],
         help="Prompt type to use for generation in HumanEvalPack tasks",
     )
     parser.add_argument(
