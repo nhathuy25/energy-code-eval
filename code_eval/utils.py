@@ -170,7 +170,7 @@ def complete_code(
             generated_outputs = model.generate(
                 prompts=inputs,
                 sampling_params=SamplingParams(**gen_kwargs),
-                use_tqdm=True
+                use_tqdm=False
             )
             """
             num_in_tokens = sum(len(generated_outputs[i].prompt_token_ids) for i in range(len(generated_outputs)))

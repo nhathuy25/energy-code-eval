@@ -418,9 +418,9 @@ class EnergyMonitor:
             num_out_tokens = sum(len(generated_outputs[i].outputs[0].token_ids) for i in range(len(generated_outputs)))
             # Collect the first generated token time of the first served sequence in the batch
             # (if there are multiple sequences in the batch, the first token time is the erliest one).
-            first_token_time = min([generated_outputs[i].metrics.first_token_time for i in range(len(generated_outputs))])
+            first_token_time = min([generated_outputs[i].metrics.first_token_time for i in range(len(generated_outputs))]) - start_time
             # Collect the end time of the batch
-            end_time = max([generated_outputs[i].metrics.finished_time for i in range(len(generated_outputs))])
+            end_time = max([generated_outputs[i].metrics.finished_time for i in range(len(generated_outputs))]) - start_time
             
         else:
             num_in_tokens = 0

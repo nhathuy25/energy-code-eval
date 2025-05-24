@@ -19,7 +19,7 @@ from vllm.config import ModelConfig
 from code_eval.arguments import parse_args
 from code_eval.evaluator import Evaluator
 from code_eval.tasks import ALL_TASKS
-from code_eval.monitor import PowerMonitor
+from code_eval.monitor import PowerMonitor, EnergyMonitor, Measurement
 from code_eval.utils import RESULT_DIR
 # Energy measurement
 from pynvml import *
@@ -27,8 +27,6 @@ from pynvml import *
 # April 2025: Use the V0 version of vLLM since V1 is still experimental
 os.environ['VLLM_USE_V1'] = '0'
 
-nvmlInit()
-handle = nvmlDeviceGetHandleByIndex(0)
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -43,6 +41,12 @@ MODEL_NAME_TO_LOCAL_DIR = {
     "deepseek_base" : '/workdir/models/DeepSeek-Coder-V2-Lite-Base',
     "deepseek_instruct" : '/workdir/models/DeepSeek-Coder-V2-Lite-Instruct',
     "codestral" : '/workdir/models/Codestral-22B-v0.1',
+}
+
+MODEL_NAME_TO_PROMPT = {
+    "CodeLlama": "codellama",
+    "DeepSeek-Coder": "deepseek",
+    "Codestral": "codestral", 
 }
 
 
@@ -109,6 +113,7 @@ def main():
         
         # TODO: Quantization replace with vLLM 
         if args.load_in_8bit:
+            # TODO: hqq in-flight quantization is deprecated with vLLM >= v0.7 to find the alternative way
             print("Loading model in 8bit - Using HQQ 8W8A")
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
@@ -118,6 +123,10 @@ def main():
             set_vllm_onthefly_hqq_quant(weight_bits=8, group_size=None, quant_mode='dynamic', skip_modules=['lm_head']) #dynamic A8W8
             
             model_kwargs['dtype'] = torch.bfloat16
+            raise warnings.warn(
+                "HQQ on-the-fly quantization is deprecated with vLLM >= 0.7, inference time is much slower" \
+                "than the non-quantized model."
+            )
             
         elif args.load_in_4bit:
             print("Loading model in 4bit - Using HQQ 4W16A")
@@ -130,22 +139,29 @@ def main():
             set_vllm_onthefly_hqq_quant(weight_bits=4, group_size=64, quant_mode='static', skip_modules=['lm_head']) #A16W4 
 
             model_kwargs['dtype'] = torch.bfloat16
+            raise warnings.warn(
+                "HQQ on-the-fly quantization is deprecated with vLLM >= 0.7, inference time is much slower" \
+                "than the non-quantized model."
+            )
 
         else:
             print(f"Loading model in {args.dtype}")
 
-        bclock = time.time()
-        start_energy = nvmlDeviceGetTotalEnergyConsumption(handle)
+        # Measuring energy consumption of the whole process
+        main_emonitor = EnergyMonitor(
+            gpu_indices=args.gpu_indices,
+            cpu_indices=args.cpu_indices,
+            log_file=None,
+        )
 
+        main_emonitor.begin_window('loading_model')
         model = LLM(
             args.model,
             enforce_eager = args.enforce_eager,
             **model_kwargs
             )
-        torch.cuda.synchronize()
-        eclock = time.time()
-        model_loading_time = eclock - bclock
-        model_loading_energy = (nvmlDeviceGetTotalEnergyConsumption(handle) - start_energy) / 1000
+        # Energy measurements of the loading process
+        ms_loading : Measurement = main_emonitor.end_window('loading_model')
 
         
         # TODO: decide whether to use Peft or not
@@ -191,11 +207,22 @@ def main():
             print("Not setting pad_token to eos_token")
             pass
             
+        # Addjust the prompt formulation (for code summarization tasks only!)
+        if args.prompt == None:
+            # Check if any key in MODEL_NAME_TO_PROMPT is a prefix of model_name
+            if any(model_name.startswith(key) for key in MODEL_NAME_TO_PROMPT):
+                matching_key = next(key for key in MODEL_NAME_TO_PROMPT if model_name.startswith(key))
+                args.prompt = MODEL_NAME_TO_PROMPT.get(matching_key)
+            else:
+                args.prompt = "instruct" # Default prompt formulation for most models
+
+        # Set up the power monitoring with multiprocessing
         if not args.no_monitor:
+            os.makedirs(args.save_monitoring_folder, exist_ok=True)
             power_monitor = PowerMonitor(
                 gpu_indices=args.gpu_indices,
                 update_period=args.update_period,
-                power_csv_path=RESULT_DIR["energy"] +f'power/{model_name}.csv'
+                power_csv_path= os.path.join(os.path.join(args.save_monitoring_folder, 'power'), f'{model_name}_{','.join(task_names)}.csv')
             )
             
         evaluator = Evaluator(model, tokenizer, args)
@@ -209,6 +236,8 @@ def main():
                 must pass equal number of files as number of tasks"
             )
 
+        # Generation and evaluation for each task
+        main_emonitor.begin_window('inference')
         for idx, task in enumerate(task_names):
             intermediate_generations = None
             # For completed generated file, evaluator evaluate only instead of generate + evaluate.
@@ -217,7 +246,8 @@ def main():
                     # intermediate_generations: list[list[str | None]] of len n_tasks
                     # where list[i] = generated codes or empty
                     intermediate_generations = json.load(f_in)
-
+            
+            torch.cuda.synchronize()
             gen_bclock = time.time()
 
             if args.generation_only:
@@ -240,16 +270,19 @@ def main():
                 gen_eclock = time.time()
                 results[task]["generation_time"] = gen_eclock - gen_bclock
         
-        power_monitor._stop()
-        tasks_execution_time = time.time() - gen_bclock
-        total_execution_time = time.time() - eclock
+        ms_inference = main_emonitor.end_window('inference')
+        if not args.no_monitor:
+            try:
+                power_monitor._stop()
+            except Exception as e:
+                print(f'Failed to stop power monitor: {e}')
 
-    measurements = dict(total_execution_time=total_execution_time,
-                        model_loading_time=model_loading_time,
-                        peak_memory=0.0,
-                        flops=0.0,
-                        model_loading_energy=model_loading_energy,
-                        total_num_tokens=0,)
+    measurements = dict(total_execution_time = ms_loading.time + ms_inference.time,
+                        model_loading_time = ms_loading.time,
+                        model_loading_energy = ms_loading.total_energy,
+                        tasks_execution_time = ms_inference.time,
+                        overall_energy = ms_inference.total_energy + ms_loading.total_energy,
+                        total_num_tokens = 0,)
 
     # Save all args to config
     results["config"] = vars(args)
@@ -257,12 +290,13 @@ def main():
     if not args.generation_only:
         dumped = json.dumps(results, indent=2)
         print(dumped)
-
-        with open(args.metric_output_path, "w") as f:
+        metrics_dir = os.path.join(args.save_monitoring_folder, 'metrics')
+        os.makedirs(metrics_dir, exist_ok=True)
+        metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
+        with open(metrics_path, "w") as f:
             f.write(dumped)
 
 if __name__ == "__main__":
     main()
 
     
-nvmlShutdown()

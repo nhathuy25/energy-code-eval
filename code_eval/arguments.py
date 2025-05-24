@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import fnmatch
+from pathlib import Path
 from typing import Optional
 from transformers import HfArgumentParser
 import argparse
@@ -103,6 +104,10 @@ class MonitorArguments(argparse.ArgumentParser):
         metadata={
             "help": "Update period for power monitoring."
         }
+    )
+    save_monitoring_folder: Optional[str | Path] = field(
+        default='results/energy',
+        metadata={"help": "Folder to save energy monitoring data."}
     )
 
 
@@ -269,7 +274,7 @@ def parse_args():
     parser.add_argument(
         "--metric_output_path",
         type=str,
-        default="evaluation_results.json",
+        default="results/evaluation_results.json",
         help="Path to save the results",
     )
     parser.add_argument(
@@ -286,7 +291,7 @@ def parse_args():
     parser.add_argument(
         "--save_generations_path",
         type=str,
-        default="generations.json",
+        default="results/generations.json",
         help="Path for saving the code generations",
     )
     parser.add_argument(
@@ -297,17 +302,17 @@ def parse_args():
     parser.add_argument(
         "--save_references_path",
         type=str,
-        default="references.json",
+        default="results/references.json",
         help="Path for saving the references solutions/tests",
     )
     parser.add_argument(
         "--prompt",
         type=str,
-        default="prompt",
+        default=None,
         choices=[
             'instruct', 'deepseek', 'codellama', 'codestral'
         ],
-        help="Prompt type to use for generation in HumanEvalPack tasks",
+        help="Prompt type to use for code summarization tasks",
     )
     parser.add_argument(
         "--gpu_memory_utilization",

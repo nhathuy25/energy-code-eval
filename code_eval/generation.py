@@ -131,11 +131,5 @@ def parallel_generations(
         **gen_kwargs,
     )
     
-    # Save the final generations
-    model_name = args.model.split("/")[-1]
-    if args.load_in_4bit:
-        export_metrics(mesurements, filename=f'energy_{model_name}_bs-{args.batch_size}_hqq.jsonl')
-    else:
-        export_metrics(mesurements, filename=f'energy_{model_name}_bs-{args.batch_size}.jsonl')
-    
+
     return generations

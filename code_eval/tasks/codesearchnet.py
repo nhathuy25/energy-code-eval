@@ -162,7 +162,7 @@ class GeneralCodeSearchNet(Task):
             return instruction.strip()
         else: instruction = description + '\n' + prompt_base
 
-        if self.prompt == "codellama" or self.prompt == "mistral":
+        if self.prompt == "codellama" or self.prompt == "codestral":
             # https://hf.co/codellama             
             prompt = f"[INST] {instruction.strip()} [/INST]\n"
         elif  self.prompt == "deepseek":
