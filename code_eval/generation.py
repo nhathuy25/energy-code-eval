@@ -113,7 +113,7 @@ def parallel_generations(
         # Load in one batch and execute all sequences in one go with vLLM
         ds_loader = DataLoader(ds_tokenized, batch_size=len(ds_tokenized))
 
-    generations, mesurements = complete_code(
+    generations = complete_code(
         task,
         model,
         tokenizer,

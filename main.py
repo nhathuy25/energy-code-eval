@@ -78,6 +78,7 @@ def main():
         task_names = pattern_match(args.tasks.split(","), ALL_TASKS)
 
     print(f"Selected Tasks: {task_names}")
+    args.task_names = task_names
 
     results = {}
     if args.load_generations_path:
@@ -219,10 +220,12 @@ def main():
         # Set up the power monitoring with multiprocessing
         if not args.no_monitor:
             os.makedirs(args.save_monitoring_folder, exist_ok=True)
+            power_dir = os.path.join(args.save_monitoring_folder, 'power')
+            os.makedirs(power_dir, exist_ok=True)
             power_monitor = PowerMonitor(
                 gpu_indices=args.gpu_indices,
                 update_period=args.update_period,
-                power_csv_path= os.path.join(os.path.join(args.save_monitoring_folder, 'power'), f'{model_name}_{','.join(task_names)}.csv')
+                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}.csv')
             )
             
         evaluator = Evaluator(model, tokenizer, args)

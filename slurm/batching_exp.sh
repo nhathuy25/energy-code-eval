@@ -1,13 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name="gpu"                 # Job name
+#SBATCH --job-name="batching"                 # Job name
 #SBATCH --cpus-per-gpu=1
-#SBATCH --gpus-per-node=1
-###SBATCH --constraint=gpu_mem_80
+#SBATCH --gpus-per-node=GA100:1
+#SBATCH --constraint=gpu_mem_80
 #SBATCH --mem=5GB                      # Memory per node
 #SBATCH --time=15:00:00                # Time limit set to 15hrs
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=slurm-%A_%a.out
 
 echo "START TIME: $(date)"
+nvidia-smi
 
 ### Configuration
 CONTAINER=vllm-openai_latest  
@@ -20,21 +21,19 @@ CONTAINER_DATASETS=/datasets
 
 # Experiment variable - change here for each experiment
 # MODEL_NAME = [codellama7i, codellama34i, codestral, deepseek_base, deepseek_instruct]
-MODEL_NAME=$1
+MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
+TASK=$1
 MNS=$2
 
 # Experiment results path
 RESULT_PATH="$CONTAINER_WORKDIR/energy-code-eval/results/batching/mns${MNS}"
 mkdir -p "$RESULT_PATH"
 
-# Tasks
-TASKS=humaneval,mbpp,codesearchnet-python,codesearchnet-java,codesearchnet-javascript
-
 # Sampling temperature
 MODEL_TEMP=0
 MODEL_TOP_P=1
-MODEL_MAXTOKENS=1000
-DATASET_NUM_SAMPLE=20
+MODEL_MAXTOKENS=512
+DATASET_NUM_SAMPLE=5
 
 echo "Saving generations and evaluate at ${GENERATIONS_PATH}"
 

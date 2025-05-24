@@ -27,6 +27,8 @@ RESULT_DIR = {
 INFILL_MODE = False
 INSTRUCTION_MODE = False
 
+def get_taskname():
+    pass
 
 class TokenizedDataset(IterableDataset):
     """Tokenize and preprocess the dataset
@@ -228,7 +230,7 @@ def complete_code(
 
     
     generations.extend(code_gens)
-    return generations, measurements
+    return generations
 
 # TODO : define post processing step
 def update_code_gens(
@@ -275,7 +277,6 @@ def update_code_gens(
                 )
                 code_gens[sample].append(gen_code)
     return code_gens
-
 
 def export_metrics(mesurements: Iterable[Dict], filename=None, export_type='csv'):
     fp = '/workdir/energy-code-eval/results/monitoring/' + filename

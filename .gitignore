@@ -7,3 +7,6 @@ results/
 
 __pycache__
 
+
+# SLURM output files
+slurm/*.out
