@@ -42,6 +42,7 @@ def create_task(strip_prompt):
     class HumanEvalPlus(GeneralHumanEvalPlus):
         def __init__(self, **kwargs):
             super().__init__(strip_prompt, **kwargs)
+            self.name='humanevalplus'
 
     return HumanEvalPlus
 

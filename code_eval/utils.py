@@ -19,16 +19,13 @@ from time import time, sleep
 PARDIR = os.path.dirname(os.path.dirname(__file__))
 
 RESULT_DIR = {
-    "correctness": f'{PARDIR}/results/correctenss/',
+    "correctness": f'{PARDIR}/results/correctness/',
     "speed": f'{PARDIR}/results/speed/',
     "energy": f'{PARDIR}/results/energy/',
 }
 
 INFILL_MODE = False
 INSTRUCTION_MODE = False
-
-def get_taskname():
-    pass
 
 class TokenizedDataset(IterableDataset):
     """Tokenize and preprocess the dataset
@@ -166,7 +163,7 @@ def complete_code(
             #inputs = input_tensors.cpu().detach().numpy().tolist() # Deprecated in vLLM
             inputs = batch["content"]
             # Begin monitoring energy
-            energy_key = f"batch_{step}"
+            energy_key = f"{task.name}_batch_{step}"
             if energy_monitor:
                 energy_monitor.begin_window(key=energy_key)
             generated_outputs = model.generate(

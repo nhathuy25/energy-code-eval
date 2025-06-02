@@ -73,4 +73,7 @@ code_eval/tasks/custom_metrics/text_similarity/tokenizer/__init__.py
 code_eval/tasks/custom_metrics/text_similarity/tokenizer/ptbtokenizer.py
 code_eval/tasks/custom_metrics/text_similarity/tokenizer/stanford-corenlp-3.4.1.jar
 slurm/all_tasks.sh
+slurm/batching_exp.sh
 slurm/humanevalexplain.sh
+slurm/models.txt
+slurm/scheduler_exp.sh

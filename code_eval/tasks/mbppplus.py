@@ -32,6 +32,9 @@ class MBPPPlus(MBPP):
     """
 
     DATASET_PATH = "evalplus/mbppplus"
+    def __init__(self):
+        super().__init__()
+        self.name='mbppplus'
 
     def get_prompt(self, doc):
         """Builds the prompt for the LM to generate from.

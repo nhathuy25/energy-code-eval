@@ -113,6 +113,7 @@ def create_task(language):
     class CodeSearchNet(GeneralCodeSearchNet):
         def __init__(self, language=language, prompt="instruct"):
             super().__init__(language=language, prompt=prompt, with_docs=True)
+            self.name = f'codesearchnet-{language}' 
 
     return CodeSearchNet
 
@@ -136,7 +137,7 @@ class GeneralCodeSearchNet(Task):
         Returns dataset for the task or an iterable of any object, that get_prompt can handle.
         """
         dataset = self.dataset["test"]
-        dataset = dataset.select(range(300))
+        dataset = dataset.select(range(300)) # Limit to 300 samples for inference
         return dataset   
     
     def get_prompt_base(self, doc):

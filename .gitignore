@@ -10,3 +10,5 @@ __pycache__
 
 # SLURM output files
 slurm/*.out
+slurm/job*
+*.out

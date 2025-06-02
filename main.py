@@ -227,6 +227,7 @@ def main():
                 update_period=args.update_period,
                 power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}.csv')
             )
+            time.sleep(3)
             
         evaluator = Evaluator(model, tokenizer, args)
 
@@ -276,6 +277,7 @@ def main():
         ms_inference = main_emonitor.end_window('inference')
         if not args.no_monitor:
             try:
+                time.sleep(3)
                 power_monitor._stop()
             except Exception as e:
                 print(f'Failed to stop power monitor: {e}')
@@ -290,14 +292,15 @@ def main():
     # Save all args to config
     results["config"] = vars(args)
     results["main.py measurements"] = measurements
-    if not args.generation_only:
-        dumped = json.dumps(results, indent=2)
-        print(dumped)
-        metrics_dir = os.path.join(args.save_monitoring_folder, 'metrics')
-        os.makedirs(metrics_dir, exist_ok=True)
-        metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
-        with open(metrics_path, "w") as f:
-            f.write(dumped)
+
+    dumped = json.dumps(results, indent=2)
+    print(dumped)
+    metrics_dir = os.path.join(args.save_monitoring_folder, 'metrics')
+    os.makedirs(metrics_dir, exist_ok=True)
+    metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
+    with open(metrics_path, "w") as f:
+        f.write(dumped)
+
 
 if __name__ == "__main__":
     main()

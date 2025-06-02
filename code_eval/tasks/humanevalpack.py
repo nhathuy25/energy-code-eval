@@ -135,18 +135,23 @@ def create_task(language, name):
     class HumanEvalFixTests(HumanEvalFixBase):
         def __init__(self, language=language, prompt="instruct"):
             super().__init__(language=language, prompt=prompt, with_docs=False)
+            self.name = name + '-' + language
     class HumanEvalFixDocs(HumanEvalFixBase):
         def __init__(self, language=language, prompt="instruct"):            
             super().__init__(language=language, prompt=prompt, with_docs=True)
+            self.name = name + '-' + language
     class HumanEvalExplainDescribe(HumanEvalExplainDescribeBase):
         def __init__(self, language=language, prompt="instruct"):
             super().__init__(language=language, prompt=prompt, with_docs=False)   
+            self.name = name + '-' + language
     class HumanEvalExplainSynthesize(HumanEvalExplainSynthesizeBase):
         def __init__(self, language=language, prompt="instruct", load_data_path=None):
             super().__init__(language=language, prompt=prompt, with_docs=False, load_data_path=load_data_path)
+            self.name = name + '-' + language
     class HumanEvalSynthesize(HumanEvalSynthesizeBase):
         def __init__(self, language=language, prompt="instruct"):
             super().__init__(language=language, prompt=prompt, with_docs=True)
+            self.name = name + '-' + language
     
     if name == "fixtests": return HumanEvalFixTests
     elif name == "fixdocs": return HumanEvalFixDocs

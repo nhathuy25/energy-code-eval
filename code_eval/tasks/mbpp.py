@@ -35,6 +35,7 @@ class MBPP(Task):
             stop_words=["\nclass", "\nassert", '\n"""', "\nprint", "\nif", "\n<|/", "\n```"],
             requires_execution=True,
         )
+        self.name='mbpp'
 
     def get_dataset(self):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""

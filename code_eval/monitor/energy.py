@@ -1,5 +1,6 @@
 """Measure the GPU time and energy consumption of a block of code.
-This file is a modified version of the original `zeus.monitor.energy` script.
+This file is a modified version of the original `zeus.monitor.energy` script with
+a minor modification for better adaptation of measurement in our experiments.
 Source: https://github.com/ml-energy/zeus/blob/master/zeus/monitor/energy.py
 """
 
@@ -215,12 +216,17 @@ class EnergyMonitor:
         else:
             if dir := os.path.dirname(log_file):
                 os.makedirs(dir, exist_ok=True)
-            self.log_file = open(log_file, "w")
-            #logger.info("Writing measurement logs to %s.", log_file)
-            self.log_file.write(
-                f"start_time,window_name,elapsed_time,{','.join(map(lambda i: f'gpu{i}_energy', self.gpu_indices))},num_in_tokens,num_out_tokens,first_token_time,finished_time\n",
-            )
-            self.log_file.flush()
+            
+            # Check if file exists to write headers only once
+            file_exists = os.path.isfile(log_file)
+            self.log_file = open(log_file, "a")  
+            
+            # Write headers only if file is new
+            if not file_exists:
+                self.log_file.write(
+                    f"start_time,window_name,elapsed_time,{','.join(map(lambda i: f'gpu{i}_energy', self.gpu_indices))},num_in_tokens,num_out_tokens,first_token_time,finished_time\n"
+                )
+                self.log_file.flush()
 
         # A dictionary that maps the string keys of active measurement windows to
         # the state of the measurement window. Each element in the dictionary is a Measurement State

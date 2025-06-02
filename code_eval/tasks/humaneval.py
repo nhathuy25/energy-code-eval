@@ -56,6 +56,7 @@ class GeneralHumanEval(Task):
         self.k = k
         self.num_workers = num_workers
         self.timeout = timeout
+        self.name = 'humaneval'
 
     def get_dataset(self):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
