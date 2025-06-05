@@ -118,7 +118,7 @@ def main():
             print("Loading model in 8bit - Using HQQ 8W8A")
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.MARLIN)
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE) # 8-bit HQQuantization is only supported with gemlite backend
 
             from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
             set_vllm_onthefly_hqq_quant(weight_bits=8, group_size=None, quant_mode='dynamic', skip_modules=['lm_head']) #dynamic A8W8
