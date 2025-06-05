@@ -29,7 +29,7 @@ TASKS=humaneval,mbpp,codesearchnet-python,codesearchnet-java,codesearchnet-javas
 MODEL_TEMP=0.8
 MODEL_TOP_P=0.95
 MODEL_MAXTOKENS=512
-DATASET_NUM_SAMPLE=5
+DATASET_NUM_SAMPLE=20
 
 # Experiment results path
 RESULT_PATH="$CONTAINER_WORKDIR/energy-code-eval/results/correctness/nucleus"

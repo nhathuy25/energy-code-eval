@@ -33,7 +33,7 @@ LANGUAGE=python
 MODEL_TEMP=$1
 MODEL_TOP_P=$2 # Nucleus sampling
 MODEL_MAXTOKENS=2000
-DATASET_NUM_SAMPLE=5
+DATASET_NUM_SAMPLE=20
 
 # Experiment results path
 RESULT_DIR="$CONTAINER_WORKDIR/energy-code-eval/results/correctness_hee"

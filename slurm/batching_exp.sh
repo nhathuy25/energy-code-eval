@@ -33,7 +33,7 @@ mkdir -p "$RESULT_PATH"
 MODEL_TEMP=0
 MODEL_TOP_P=1
 MODEL_MAXTOKENS=512
-DATASET_NUM_SAMPLE=5
+DATASET_NUM_SAMPLE=20
 
 echo "Saving generations and evaluate at ${RESULT_PATH}"
 

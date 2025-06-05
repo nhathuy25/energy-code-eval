@@ -1,6 +1,7 @@
 .gitignore
 README.md
 main.py
+report.nsys-rep
 requirements.txt
 setup.py
 code_eval/__init__.py
@@ -74,6 +75,11 @@ code_eval/tasks/custom_metrics/text_similarity/tokenizer/ptbtokenizer.py
 code_eval/tasks/custom_metrics/text_similarity/tokenizer/stanford-corenlp-3.4.1.jar
 slurm/all_tasks.sh
 slurm/batching_exp.sh
+slurm/correctness_greedy.sh
+slurm/correctness_hee.sh
+slurm/correctness_mix.sh
+slurm/correctness_nucleus.sh
+slurm/correctness_test.sh
 slurm/humanevalexplain.sh
 slurm/models.txt
 slurm/scheduler_exp.sh

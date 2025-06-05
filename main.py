@@ -35,12 +35,12 @@ for path in RESULT_DIR.values():
     os.makedirs(path, exist_ok=True)
 
 MODEL_NAME_TO_LOCAL_DIR = {
-    "codellama7": '/workdir/models/CodeLlama-7b-hf',
-    "codellama7i": '/workdir/models/CodeLlama-7b-Instruct-hf',
-    "codellama34i" : '/workdir/models/CodeLlama-34b-Instruct-hf',
-    "deepseek_base" : '/workdir/models/DeepSeek-Coder-V2-Lite-Base',
-    "deepseek_instruct" : '/workdir/models/DeepSeek-Coder-V2-Lite-Instruct',
-    "codestral" : '/workdir/models/Codestral-22B-v0.1',
+    "codellama7": '/datasets/CodeLlama-7b-hf',
+    "codellama7i": '/datasets/CodeLlama-7b-Instruct-hf',
+    "codellama34i" : '/datasets/CodeLlama-34b-Instruct-hf',
+    "deepseek_base" : '/datasets/DeepSeek-Coder-V2-Lite-Base',
+    "deepseek_instruct" : '/datasets/DeepSeek-Coder-V2-Lite-Instruct',
+    "codestral" : '/datasets/Codestral-22B-v0.1',
 }
 
 MODEL_NAME_TO_PROMPT = {

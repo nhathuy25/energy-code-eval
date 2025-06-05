@@ -20,8 +20,8 @@ PARDIR = os.path.dirname(os.path.dirname(__file__))
 
 RESULT_DIR = {
     "correctness": f'{PARDIR}/results/correctness/',
-    "speed": f'{PARDIR}/results/speed/',
-    "energy": f'{PARDIR}/results/energy/',
+    "scheduler": f'{PARDIR}/results/scheduler/',
+    "batching": f'{PARDIR}/results/batching/',
 }
 
 INFILL_MODE = False
