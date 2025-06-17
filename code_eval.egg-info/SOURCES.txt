@@ -1,7 +1,6 @@
 .gitignore
 README.md
 main.py
-report.nsys-rep
 requirements.txt
 setup.py
 code_eval/__init__.py
@@ -80,6 +79,8 @@ slurm/correctness_hee.sh
 slurm/correctness_mix.sh
 slurm/correctness_nucleus.sh
 slurm/correctness_test.sh
+slurm/experiment_summary.md
 slurm/humanevalexplain.sh
 slurm/models.txt
+slurm/run_all_experiments.sh
 slurm/scheduler_exp.sh

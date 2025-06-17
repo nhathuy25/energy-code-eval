@@ -34,14 +34,6 @@ CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 for path in RESULT_DIR.values():
     os.makedirs(path, exist_ok=True)
 
-MODEL_NAME_TO_LOCAL_DIR = {
-    "codellama7": '/datasets/CodeLlama-7b-hf',
-    "codellama7i": '/datasets/CodeLlama-7b-Instruct-hf',
-    "codellama34i" : '/datasets/CodeLlama-34b-Instruct-hf',
-    "deepseek_base" : '/datasets/DeepSeek-Coder-V2-Lite-Base',
-    "deepseek_instruct" : '/datasets/DeepSeek-Coder-V2-Lite-Instruct',
-    "codestral" : '/datasets/Codestral-22B-v0.1',
-}
 
 MODEL_NAME_TO_PROMPT = {
     "CodeLlama": "codellama",
@@ -99,8 +91,6 @@ def main():
             "enable_chunked_prefill": args.enable_chunked_prefill,
         }
         
-        if args.model in MODEL_NAME_TO_LOCAL_DIR:
-            args.model = MODEL_NAME_TO_LOCAL_DIR[args.model]
         model_name = os.path.basename(args.model)
     
         if args.gpu_memory_utilization:
@@ -112,7 +102,7 @@ def main():
                 model_kwargs["gpu_memory_utilization"] = "auto"
                 print("Loading model in auto mode")
         
-        # TODO: Quantization replace with vLLM 
+        # WARNING
         if args.load_in_8bit:
             # TODO: hqq in-flight quantization is deprecated with vLLM >= v0.7 to find the alternative way
             print("Loading model in 8bit - Using HQQ 8W8A")
@@ -134,7 +124,7 @@ def main():
             # Source https://github.com/mobiusml/hqq?tab=readme-ov-file#vllm
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.MARLIN)
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
 
             from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
             set_vllm_onthefly_hqq_quant(weight_bits=4, group_size=64, quant_mode='static', skip_modules=['lm_head']) #A16W4 
@@ -147,6 +137,42 @@ def main():
 
         else:
             print(f"Loading model in {args.dtype}")
+
+        # Change backend to GEMLITE of HQQuantization models
+        config_path = os.path.join(args.model, "config.json")
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+
+            if "quantization_config" in config:
+                if "quant_method" in config["quantization_config"]:
+                    quant_method = config["quantization_config"]["quant_method"]
+                else: quant_method = None
+            else:
+                quant_method = None
+
+            """
+            if quant_method == 'awq':
+                # Avoid error with 
+                # Source: https://github.com/vllm-project/vllm/issues/5376
+                print("Changing awq attention backend to Xformers instead of FlashAttention")
+                os.environ["export VLLM_ATTENTION_BACKEND"]="XFORMERS"
+            """
+            if quant_method == 'hqq':
+                print("Changing hqq backend for vLLM inference")
+                from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
+                set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+
+                # It is suggested to load HQQ model in float16 precision for Gemlite backend and bfloat16 for Torchao's tiny_gemm backend
+                # Source: https://github.com/mobiusml/hqq?tab=readme-ov-file#optimized-inference
+                model_kwargs['dtype'] = torch.float16 
+
+        except FileNotFoundError:
+            print(f"Config file not found at {config_path}")
+            return None
+        except json.JSONDecodeError:
+            print(f"Error parsing JSON in {config_path}")
+            return None
 
         # Measuring energy consumption of the whole process
         main_emonitor = EnergyMonitor(
@@ -161,6 +187,12 @@ def main():
             enforce_eager = args.enforce_eager,
             **model_kwargs
             )
+        
+        if quant_method == "hqq":
+            from hqq.utils.patching import prepare_for_inference
+            prepare_for_inference(model, backend="gemlite") 
+
+
         # Energy measurements of the loading process
         ms_loading : Measurement = main_emonitor.end_window('loading_model')
 

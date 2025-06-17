@@ -11,7 +11,7 @@ echo "START TIME: $(date)"
 nvidia-smi
 
 ### Configuration
-CONTAINER=vllm-openai_latest
+CONTAINER=dockerproxy.repos.tech.orange_vllm_vllm-openai_v0.8.4
 # Mount the host directory to the container
 # !Note: /datasets used for saved models and it is ReadOnly 
 CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\
@@ -27,7 +27,7 @@ MNS=$2
 
 # Experiment results path
 RESULT_PATH="$CONTAINER_WORKDIR/energy-code-eval/results/batching/mns${MNS}"
-mkdir -p "$RESULT_PATH"
+
 
 # Sampling temperature
 MODEL_TEMP=0
@@ -53,7 +53,10 @@ CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--generation_only \
 	--trust_remote_code \
 	--enforce_eager \
+	--max_model_len 16384 \
 	--max_num_seqs $MNS \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
 	--save_monitoring_folder $RESULT_PATH \
 "
 
@@ -64,5 +67,14 @@ srun  \
   $SRUN_ARGS \
   /bin/bash -c "pip install -e energy-code-eval; \
   $CMD"
+
+EXIT_CODE=$?
+echo "[$SLURM_JOB_ID] Finished '$(date)' with exit($EXIT_CODE)"
+
+# If job fails, requeue only once
+if [[ $EXIT_CODE -ne 0 ]] && [[ -z "$SLURM_RESTART_COUNT" ]] ; then
+    echo "[$SLURM_JOB_ID] Requeuing '$SLURM_JOB_ID' because Job exited with '$EXIT_CODE'"
+    exit 42
+fi
 
 echo "END TIME: $(date)"

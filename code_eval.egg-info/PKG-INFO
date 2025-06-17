@@ -4,7 +4,7 @@ Version: 0.0.0
 Summary: Evaluate the energy-efficient level of open-source LLMs for Code tasks.
 License: Apache 2.0
 Requires-Python: >=3.9
-Requires-Dist: transformers>=4.25.1
+Requires-Dist: transformers>=4.50
 Requires-Dist: accelerate>=0.13.2
 Requires-Dist: datasets>=2.6.1
 Requires-Dist: evaluate>=0.3.0
@@ -12,11 +12,11 @@ Requires-Dist: pyext==0.5
 Requires-Dist: mosestokenizer==1.0.0
 Requires-Dist: huggingface_hub>=0.11.1
 Requires-Dist: fsspec>=2023.12.2
-Requires-Dist: vllm>=0.7.2
+Requires-Dist: vllm==0.8.4
 Requires-Dist: sentence-transformers>=4.0.0
 Requires-Dist: bert-score>=0.3.11
-Requires-Dist: hqq>=0.2.5
-Requires-Dist: gemlite>=0.4.4
+Requires-Dist: hqq==0.2.7
+Requires-Dist: gemlite==0.4.7
 Requires-Dist: nvidia-ml-py>=12.570.0
 Provides-Extra: ds1000
 Requires-Dist: DateTime==4.7; extra == "ds1000"

@@ -11,7 +11,7 @@ echo "START TIME: $(date)"
 nvidia-smi
 
 ### Configuration
-CONTAINER=vllm-openai_latest
+CONTAINER=dockerproxy.repos.tech.orange_vllm_vllm-openai_v0.8.4
 # Mount the host directory to the container
 # !Note: /datasets used for saved models and it is ReadOnly 
 CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\

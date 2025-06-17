@@ -2,12 +2,15 @@ CodeLlama-34b-Instruct-AWQ
 CodeLlama-34B-Instruct-GPTQ
 CodeLlama-34b-Instruct-hf
 CodeLlama-34b-Instruct-hf_4bits64gs_HQQ
+CodeLlama-34b-Instruct-hf_8bits64gs_HQQ
 Codestral-22B-v0.1
 Codestral-22B-v0.1_4bits64gs_HQQ
+Codestral-22B-v0.1_8bits64gs_HQQ
 Codestral-22B-v0.1-AWQ
 Codestral-22B-v0.1-GPTQ
 deepseek-coder-6.7b-instruct
 deepseek-coder-6.7b-instruct_4bits64gs_HQQ
+deepseek-coder-6.7b-instruct_8bits64gs_HQQ
 deepseek-coder-6.7B-instruct-AWQ
 deepseek-coder-6.7B-instruct-GPTQ
 DeepSeek-Coder-V2-Lite-Instruct

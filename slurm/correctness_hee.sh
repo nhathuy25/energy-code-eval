@@ -12,7 +12,7 @@ echo "START TIME: $(date)"
 nvidia-smi
 
 ### Configuration
-CONTAINER=vllm-openai_latest
+CONTAINER=dockerproxy.repos.tech.orange_vllm_vllm-openai_v0.8.4
 # Mount the host directory to the container
 # !Note: /datasets used for saved models and it is ReadOnly 
 CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\
@@ -64,6 +64,9 @@ DESCRIBE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--allow_code_execution \
 	--trust_remote_code \
 	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
 	--save_generations \
 	--save_generations_path $RESULT_PATH/generations/${MODEL_NAME}.json \
 	--save_monitoring_folder $RESULT_PATH \
@@ -74,11 +77,14 @@ SYNTHESIZE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
 	--model $CONTAINER_DATASETS/$MODEL_NAME \
 	--tasks humanevalexplainsynthesize-${LANGUAGE} \
 	--n_samples 5 \
-	--temperature 0.0 \
+	--temperature 0 \
 	--top_p 1 \
 	--max_tokens 512 \
 	--allow_code_execution \
 	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
 	--max_num_seqs 128 \
 	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-$LANGUAGE.json \
 	--trust_remote_code \

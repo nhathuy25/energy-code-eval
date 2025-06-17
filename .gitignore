@@ -9,6 +9,8 @@ __pycache__
 
 
 # SLURM output files
+slurm/run_all_experiments.sh
+slurm/experiment_summary.md
 slurm/*.out
 slurm/job*
 *.out

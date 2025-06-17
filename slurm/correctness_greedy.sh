@@ -11,7 +11,7 @@ echo "START TIME: $(date)"
 nvidia-smi
 
 ### Configuration
-CONTAINER=vllm-openai_latest
+CONTAINER=dockerproxy.repos.tech.orange_vllm_vllm-openai_v0.8.4
 # Mount the host directory to the container
 # !Note: /datasets used for saved models and it is ReadOnly 
 CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\
@@ -49,10 +49,13 @@ CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--temperature $MODEL_TEMP \
 	--top_p $MODEL_TOP_P \
 	--max_tokens $MODEL_MAXTOKENS \
-	--max_num_seqs 128 \
+	--max_model_len 16384 \
 	--allow_code_execution \
 	--trust_remote_code \
 	--enforce_eager \
+	--max_num_seqs 128 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
 	--save_monitoring_folder $RESULT_PATH \
 "
 
