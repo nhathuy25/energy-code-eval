@@ -100,7 +100,7 @@ python3 main.py \
 
 ```
 LANGUAGE=python 
-python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
+python3 main.py  \
 	--model $CONTAINER_DATASETS/$MODEL_NAME \
 	--tasks humanevalexplainsynthesize-${LANGUAGE} \
 	--n_samples 5 \
