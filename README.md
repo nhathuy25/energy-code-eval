@@ -14,7 +14,7 @@ See more in `requirements.txt`
 
 ## How to use
 
-See [this file](./code_eval/arguments.py) for arguments informations.
+Please refer to [this file](./code_eval/arguments.py) for arguments' informations.
 
 ### Basic load and inference with vLLM
 ```cmd
@@ -76,8 +76,10 @@ HumanEvalExplain require 2 times execution, first for generating description D f
 Original dataset -> C1 -> D -> C2 -> pass@k
 
 ```cmd
-# HumanEvalExplainDescribe : For generating natural language description D from 
-LANGUAGE=python # Exist 3 available language : python, java, javascript
+# HumanEvalExplainDescribe : For generating natural language description D from the canonical solution code C1 of the original dataset HumanEval.
+
+## Exist 3 available language : python, java, javascript
+LANGUAGE=python 
 python3 main.py \
 	--model <MODEL_DIRECTORY> \
 	--tasks humanevalexplaindescribe-${LANGUAGE} \
@@ -99,6 +101,8 @@ python3 main.py \
 ```
 
 ```
+# HumanEvalExplainSynthesize : For generating synthesized code C2 and evaluation with pass@1 score.
+
 LANGUAGE=python 
 python3 main.py  \
 	--model $CONTAINER_DATASETS/$MODEL_NAME \
