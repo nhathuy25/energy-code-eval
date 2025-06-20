@@ -33,7 +33,7 @@ RESULT_PATH="$CONTAINER_WORKDIR/energy-code-eval/results/batching/mns${MNS}"
 MODEL_TEMP=0
 MODEL_TOP_P=1
 MODEL_MAXTOKENS=512
-DATASET_NUM_SAMPLE=20
+DATASET_NUM_SAMPLE=5
 
 echo "Saving generations and evaluate at ${RESULT_PATH}"
 
