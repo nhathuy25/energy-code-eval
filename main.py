@@ -102,7 +102,7 @@ def main():
                 model_kwargs["gpu_memory_utilization"] = "auto"
                 print("Loading model in auto mode")
         
-        # WARNING
+        # WARNING: the following 2 arguments are used for inflight quantization, which is deprecated
         if args.load_in_8bit:
             # TODO: hqq in-flight quantization is deprecated with vLLM >= v0.7 to find the alternative way
             print("Loading model in 8bit - Using HQQ 8W8A")
@@ -162,6 +162,7 @@ def main():
                 print("Changing hqq backend for vLLM inference")
                 from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
                 set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+                #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
 
                 # It is suggested to load HQQ model in float16 precision for Gemlite backend and bfloat16 for Torchao's tiny_gemm backend
                 # Source: https://github.com/mobiusml/hqq?tab=readme-ov-file#optimized-inference
@@ -181,32 +182,19 @@ def main():
             log_file=None,
         )
 
+        # Initialization of measuring window for model loading 
         main_emonitor.begin_window('loading_model')
         model = LLM(
             args.model,
             enforce_eager = args.enforce_eager,
             **model_kwargs
             )
-        
-        if quant_method == "hqq":
-            from hqq.utils.patching import prepare_for_inference
-            prepare_for_inference(model, backend="gemlite") 
-
+    
 
         # Energy measurements of the loading process
         ms_loading : Measurement = main_emonitor.end_window('loading_model')
 
-        
-        # TODO: decide whether to use Peft or not
-        """
-        if args.peft_model:
-            from peft import PeftModel  # dynamic import to avoid dependency on peft
-
-            model = PeftModel.from_pretrained(model, args.peft_model)
-            print("Loaded PEFT model. Merging...")
-            model.merge_and_unload()
-            print("Merge complete.")
-        """
+        ### Initial tokenizer setup from bigcode-evaluation-harness
         if args.left_padding:
             # left padding is required for some models like chatglm3-6b
             tokenizer = AutoTokenizer.from_pretrained(
@@ -239,6 +227,8 @@ def main():
         except AttributeError:
             print("Not setting pad_token to eos_token")
             pass
+        
+        ### end
             
         # Addjust the prompt formulation (for code summarization tasks only!)
         if args.prompt == None:
@@ -261,6 +251,7 @@ def main():
             )
             time.sleep(3)
             
+        # Initialize Evaluator for 
         evaluator = Evaluator(model, tokenizer, args)
 
         if (

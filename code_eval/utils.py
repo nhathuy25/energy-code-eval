@@ -132,15 +132,12 @@ def complete_code(
 ):
     """
     Complete the code base on dataset Loader, supported continuous generation and post processing step.
-    Return 
+    Return a list of generated code [n_tasks * n_samples].
     """
     code_gens: List[List[Optional[str]]] = [[] for _ in range(n_tasks)]
     generations = [] if not intermediate_generations else intermediate_generations
     gen_token_dict = defaultdict(list) # dict of list of generated tokens
 
-    # Initialize GPU monitor
-    """handle = nvmlDeviceGetHandleByIndex(0)
-    mesurements = []"""
     num_samples = n_tasks * dataloader.dataset.n_copies
     
     # If not assign batch size, set it to the number of samples, exist 1 batch only 
@@ -153,7 +150,7 @@ def complete_code(
     for step, batch in tqdm(
         enumerate(dataloader),
         total=math.ceil(
-            #n_tasks * dataloader.dataset.n_copies / num_processes # Define later for parallel distribution
+            #n_tasks * dataloader.dataset.n_copies / num_processes # TODO: Define later for parallel distribution
             num_samples / batch_size
         ),
     ):
@@ -171,12 +168,6 @@ def complete_code(
                 sampling_params=SamplingParams(**gen_kwargs),
                 use_tqdm=False
             )
-            """
-            num_in_tokens = sum(len(generated_outputs[i].prompt_token_ids) for i in range(len(generated_outputs)))
-            num_out_tokens = sum(len(generated_outputs[i].outputs[0].token_ids) for i in range(len(generated_outputs)))
-            torch.cuda.synchronize()
-            elapsed_time = time() - start_time
-            energy = (nvmlDeviceGetTotalEnergyConsumption(handle) - start_energy) / 1000 # convert to Joules"""
             
             if energy_monitor:
                 # Close batch's energy monitoring window
@@ -224,12 +215,10 @@ def complete_code(
         code_gens,
         gen_token_dict
     )
-
     
     generations.extend(code_gens)
     return generations
 
-# TODO : define post processing step
 def update_code_gens(
     task,
     tokenizer,
@@ -262,7 +251,7 @@ def update_code_gens(
                     "The outputs must be in the form of token_ids or RequestOutput of vLLM"
                 )        
             if not INFILL_MODE:
-                # TODO 
+                # TODO: Define later for infilling mode
                 pass
             if postprocess:
                 code_gens[sample].append(
@@ -274,15 +263,3 @@ def update_code_gens(
                 )
                 code_gens[sample].append(gen_code)
     return code_gens
-
-def export_metrics(mesurements: Iterable[Dict], filename=None, export_type='csv'):
-    fp = '/workdir/energy-code-eval/results/monitoring/' + filename
-    try:
-        with open(fp, 'wb') as f:
-            for mesurement in mesurements:
-                f.write((json.dumps(mesurement) + '\n').encode('utf-8'))
-                
-            print(f'Measurement saved to {fp}')
-    except Exception as e:
-        print(f"Error exporting metrics: {e}")
-

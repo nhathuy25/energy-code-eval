@@ -79,8 +79,6 @@ slurm/correctness_hee.sh
 slurm/correctness_mix.sh
 slurm/correctness_nucleus.sh
 slurm/correctness_test.sh
-slurm/experiment_summary.md
 slurm/humanevalexplain.sh
 slurm/models.txt
-slurm/run_all_experiments.sh
 slurm/scheduler_exp.sh

@@ -7,9 +7,14 @@ import os
 from torch.utils.data.dataloader import DataLoader
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-from code_eval.utils import TokenizedDataset, complete_code, export_metrics
+from code_eval.utils import TokenizedDataset, complete_code
 from code_eval.monitor import EnergyMonitor, Measurement, PowerMonitor
 
+"""
+Huy's note: This 2 classes below is originally from bigcode-evaluation-harness, for adding custom stopping criteria with HF inference. 
+However, it is not used with vLLM inference since vLLM has integrated stopping words inside generate(stop=[], eos_token=[]) method.
+I keep them here in case we reuse HF Transformers inference to compare with vLLM in the report.
+"""
 class EndOfFunctionCriteria(StoppingCriteria):
     """Custom `StoppingCriteria` which checks if all generated functions in the batch are completed."""
     def __init__(self, start_length, eof_strings, tokenizer, check_fn=None):
@@ -51,6 +56,13 @@ def parallel_generations(
         intermediate_save_generations_path: Optional[str] = None,
         energy_monitor: Optional[EnergyMonitor] = None,
 ):
+    """
+    Set up the dataset loader from task and corresponding dataset for generation.
+    Define generation settings before calling `complete_code` to generate.
+    - temperature, top_p, top_k, max_tokens     : for generation configurations
+    - stop_words, stop_token_ids                : for stopping criteria
+    - ignore_eos                                : to ignore eos tokens for generation to maximum number of tokens
+    """ 
     if args.load_generations_path:
         # load generated code
         with open(args.load_generations_path) as fp:
