@@ -163,6 +163,8 @@ def complete_code(
             energy_key = f"{task.name}_batch_{step}"
             if energy_monitor:
                 energy_monitor.begin_window(key=energy_key)
+            
+            # Generate code with vLLM method
             generated_outputs = model.generate(
                 prompts=inputs,
                 sampling_params=SamplingParams(**gen_kwargs),
@@ -179,6 +181,7 @@ def complete_code(
         except ValueError as e:
             raise e
         # -- end generation --
+        
         generated_tasks = batch["task_id"]
         
         for sample, generated_outputs in zip(generated_tasks, generated_outputs):

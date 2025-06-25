@@ -118,7 +118,13 @@ def parallel_generations(
         instruction_tokens=instruction_tokens
         )
     
-    # Load dataset using torch.DataLoader, batch_size here is diff. from args.batch_size
+    # Load dataset using torch.DataLoader
+    """
+    Huy's note: batch size is set by default to None, which means the whole dataset will be load in one batch and vLLM's scheduler
+    will handle the inference with max_num_seqs and other parameters.
+    If batch size is set, the input sequences with be loaded in batches and sent to vLLM engine group by group (one after another) of batch size 
+        - this reduce the throughput of vLLM inference since it limit the use of iteration-level scheduling.
+    """
     if args.batch_size:
         ds_loader = DataLoader(ds_tokenized, batch_size=args.batch_size)
     else:

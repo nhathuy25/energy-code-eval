@@ -108,7 +108,8 @@ def main():
             print("Loading model in 8bit - Using HQQ 8W8A")
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE) # 8-bit HQQuantization is only supported with gemlite backend
+            set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE) # 8-bit HQQuantization is suggested to be used with gemlite backend
+            #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
 
             from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
             set_vllm_onthefly_hqq_quant(weight_bits=8, group_size=None, quant_mode='dynamic', skip_modules=['lm_head']) #dynamic A8W8
@@ -125,6 +126,7 @@ def main():
 
             from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
             set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+            #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
 
             from hqq.utils.vllm import set_vllm_onthefly_hqq_quant
             set_vllm_onthefly_hqq_quant(weight_bits=4, group_size=64, quant_mode='static', skip_modules=['lm_head']) #A16W4 
@@ -305,6 +307,7 @@ def main():
             except Exception as e:
                 print(f'Failed to stop power monitor: {e}')
 
+    # Over all measurements of main.py, for detailed batch-level measurements, enable --save_monitoring_folder
     measurements = dict(total_execution_time = ms_loading.time + ms_inference.time,
                         model_loading_time = ms_loading.time,
                         model_loading_energy = ms_loading.total_energy,

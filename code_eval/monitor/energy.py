@@ -43,9 +43,9 @@ class Measurement:
             window. Each CPU index refers to one powerzone exposed by RAPL (intel-rapl:d)  and DRAM
             measurements are taken from sub-packages within each powerzone. This can be 'None' if
             CPU measurement is not available or DRAM measurement is not available.
-        num_in_tokens: Number of input tokens processed during the measurement window.
-        num_out_tokens: Number of output tokens generated during the measurement window.
-        first_token_time: Time to first token (in seconds)
+        (code-eval)num_in_tokens: Number of input tokens processed during the measurement window.
+        (code-eval)num_out_tokens: Number of output tokens generated during the measurement window.
+        (code-eval)first_token_time: Time to first token (in seconds)
     """
 
     time: float
@@ -326,6 +326,9 @@ class EnergyMonitor:
                 window is assumed to be cancelled and discarded. Thus, an empty Measurement
                 object will be returned and the measurement window will not be recorded in
                 the log file either. `sync_execution` is still respected.
+            generated_outputs: List of generated outputs from the vLLM engine. This argument is 
+                used to extract the generation informations such as number of input/output tokens,
+                time to first token, and finished time, etc.
         """
         # Retrieve the start time and energy consumption of this window.
         try:
