@@ -85,7 +85,8 @@ def parallel_generations(
         task.stop_words.append(tokenizer.eos_token)   
 
     if not args.no_stop:
-        gen_kwargs["stop"] = task.stop_words 
+        gen_kwargs["stop"] = task.stop_words # Stop at the stopping words
+        gen_kwargs["ignore_eos"] = False # Stop at the stopping eos_tokens
     else:
         gen_kwargs["ignore_eos"] = True
 

@@ -73,8 +73,8 @@ class Evaluator:
             energy_dir = os.path.join(self.args.save_monitoring_folder, 'energy')
             os.makedirs(energy_dir, exist_ok=True)
             self.energy_monitor = EnergyMonitor(
-                gpu_indices=None,
-                cpu_indices=None,
+                gpu_indices=self.args.gpu_indices,
+                cpu_indices=self.args.cpu_indices,
                 log_file=os.path.join(energy_dir, f'{self.model_name}_{','.join(self.args.task_names)}.csv')
             )
         else:
