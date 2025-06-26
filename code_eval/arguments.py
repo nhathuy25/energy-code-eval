@@ -65,6 +65,12 @@ class SchedulerArguments(argparse.ArgumentParser):
             "help": "Maximum number of sequences to generate in parallel."
         }
     )
+    max_num_batched_tokens: Optional[int] = field(
+        default=None,
+        metadata={
+            "help":'Maximum number of batched tokens per iteration.'
+        }
+    )
     enable_chunked_prefill: Optional[bool] = field(
         default=None,
         metadata={
