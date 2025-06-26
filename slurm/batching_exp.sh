@@ -50,6 +50,7 @@ CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--temperature $MODEL_TEMP \
 	--top_p $MODEL_TOP_P \
 	--max_tokens $MODEL_MAXTOKENS \
+	--no_stop \
 	--generation_only \
 	--trust_remote_code \
 	--enforce_eager \
@@ -57,7 +58,7 @@ CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--max_num_seqs $MNS \
 	--num_scheduler_steps 1 \
 	--enable_chunked_prefill False \
-	--save_monitoring_folder $RESULT_PATH \
+	--save_monitoring_folder $RESULT_PATH 
 "
 
 echo $CMD

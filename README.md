@@ -46,6 +46,7 @@ python3 main.py \
 	--temperature 0 \
 	--top_p 1 \
 	--max_tokens 512 \
+	--no_stop \ # Ignore end-of-sequences token to generate exact 'max_tokens' for homogeneity of throughput mesurement
 	--generation_only \ # Skip the correctness (pass@k score) evaluation 
 	--trust_remote_code \
 	--enforce_eager \
