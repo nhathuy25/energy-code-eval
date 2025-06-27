@@ -152,7 +152,7 @@ class PowerMonitor:
             power_csv_path = tempfile.mkstemp(suffix=".csv", text=True)[1]
         open(power_csv_path, "w").close()
         self.power_f = open(power_csv_path)
-        self.power_df_columns = ["time"] + [f"power{i}" for i in self.gpu_indices]
+        self.power_df_columns = ["time"] + [f"power{i}" for i in self.gpu_indices] + [f"temperature{i}" for i in self.gpu_indices]
         self.power_df = pd.DataFrame(columns=self.power_df_columns)
 
         # Spawn the power polling process.
@@ -253,6 +253,8 @@ class PowerMonitor:
 
         return {i: float(row[f"power{i}"]) for i in self.gpu_indices}
 
+    def get_temperature(self, time: float | None = None) -> dict[int, float] | None:
+        pass
 
 def _polling_process(
     gpu_indices: list[int],
@@ -272,7 +274,16 @@ def _polling_process(
                 for index in gpu_indices:
                     power.append(gpus.getInstantPowerUsage(index))
                 power_str = ",".join(map(lambda p: str(p / 1000), power))
-                power_f.write(f"{now},{power_str}\n")
+                # Add here for temperature polling
+                temperature: list[float] = []
+                for index in gpu_indices:
+                    temperature.append(gpus.getInstantTemperature(index))
+                temp_str = ",".join(map(lambda t: str(t), temperature))
+
+                # Add here for GPU KV Cache polling
+                
+                
+                power_f.write(f"{now},{power_str},{temp_str}\n")
                 if (sleep_time := update_period - (time() - now)) > 0:
                     sleep(sleep_time)
     except KeyboardInterrupt:

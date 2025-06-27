@@ -130,6 +130,11 @@ class GPU:
     def getTotalEnergyConsumption(self) -> int:
         """Return the total energy consumption of the specified GPU. Units: mJ."""
         return pynvml.nvmlDeviceGetTotalEnergyConsumption(self.handle)
+    
+    @_handle_nvml_errors
+    def getInstantTemperature(self) -> int:
+        """Return the current temperature of GPU. Units: °C"""
+        return pynvml.nvmlGetDeviceTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
 
 
 class GPUs:
@@ -204,3 +209,7 @@ class GPUs:
     def getTotalEnergyConsumption(self, gpu_index: int) -> int:
         """Return the total energy consumption of the GPU since driver load. Units: mJ."""
         return self.gpus[gpu_index].getTotalEnergyConsumption()
+    
+    def getInstantTemperature(self, gpu_index: int) -> int:
+        """Return the current temperature of the specified GPU. Units: °C."""
+        return self.gpus[gpu_index].getInstantTemperature()
