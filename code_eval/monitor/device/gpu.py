@@ -134,7 +134,7 @@ class GPU:
     @_handle_nvml_errors
     def getInstantTemperature(self) -> int:
         """Return the current temperature of GPU. Units: °C"""
-        return pynvml.nvmlGetDeviceTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
+        return pynvml.nvmlDeviceGetTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
 
 
 class GPUs:
