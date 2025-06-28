@@ -76,8 +76,7 @@ def parallel_generations(
         "temperature": args.temperature,
         "top_p": args.top_p,
         "top_k": args.top_k,
-        "max_tokens": args.max_tokens,
-        "stop_token_ids" : [tokenizer.eos_token_ids]
+        "max_tokens": args.max_tokens
     }
 
     # Check if the task has a custom check_fn method for the stopping criteria
