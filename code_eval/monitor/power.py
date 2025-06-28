@@ -274,14 +274,12 @@ def _polling_process(
                 for index in gpu_indices:
                     power.append(gpus.getInstantPowerUsage(index))
                 power_str = ",".join(map(lambda p: str(p / 1000), power))
-                # Add here for temperature polling
+                
+                # Temperature polling
                 temperature: list[float] = []
                 for index in gpu_indices:
                     temperature.append(gpus.getInstantTemperature(index))
                 temp_str = ",".join(map(lambda t: str(t), temperature))
-
-                # Add here for GPU KV Cache polling
-                
                 
                 power_f.write(f"{now},{power_str},{temp_str}\n")
                 if (sleep_time := update_period - (time() - now)) > 0:

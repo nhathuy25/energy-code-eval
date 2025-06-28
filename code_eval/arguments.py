@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import fnmatch
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from transformers import HfArgumentParser
 import argparse
 
@@ -111,7 +111,7 @@ class MonitorArguments(argparse.ArgumentParser):
             "help": "Update period for power monitoring."
         }
     )
-    save_monitoring_folder: Optional[str | Path] = field(
+    save_monitoring_folder: Optional[Union[str, Path]] = field(
         default='results/energy',
         metadata={"help": "Folder to save energy monitoring data."}
     )
