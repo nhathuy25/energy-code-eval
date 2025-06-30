@@ -24,6 +24,8 @@ CONTAINER_DATASETS=/datasets
 MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
 TASKS=$1
 MNS=$2
+N_SAMPLES=$3
+MAX_TOKENS=$4
 
 # Experiment results path
 RESULT_PATH="$CONTAINER_WORKDIR/energy-code-eval/results/batching/mns${MNS}"
@@ -32,8 +34,6 @@ RESULT_PATH="$CONTAINER_WORKDIR/energy-code-eval/results/batching/mns${MNS}"
 # Sampling temperature
 MODEL_TEMP=0
 MODEL_TOP_P=1
-MODEL_MAXTOKENS=512
-DATASET_NUM_SAMPLE=5
 
 echo "Saving generations and evaluate at ${RESULT_PATH}"
 
@@ -46,10 +46,10 @@ SRUN_ARGS="\
 CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--model $CONTAINER_DATASETS/$MODEL_NAME \
 	--tasks $TASKS \
-	--n_samples $DATASET_NUM_SAMPLE \
+	--n_samples $N_SAMPLES \
 	--temperature $MODEL_TEMP \
 	--top_p $MODEL_TOP_P \
-	--max_tokens $MODEL_MAXTOKENS \
+	--max_tokens $MAX_TOKENS \
 	--no_stop \
 	--generation_only \
 	--trust_remote_code \
