@@ -18,7 +18,7 @@ CONTAINER_WORKDIR=/workdir
 DATASET_DIR=$CONTAINER_WORKDIR/energy-code-eval
 
 # Experiment variable - change here for each experiment
-# MODEL_NAME = [codellama7i, codellama34i, codestral, deepseek_base, deepseek_instruct]
+# MODEL_NAME = path-to-local-model
 # PROMPT = [instruct, codellama, deepseek, codestral]
 MODEL_NAME=$1
 PROMPT=$2

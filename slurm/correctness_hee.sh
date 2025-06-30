@@ -20,18 +20,18 @@ CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\
 CONTAINER_WORKDIR=/workdir
 CONTAINER_DATASETS=/datasets
 
-# Experiment variable - change here for each experiment
-# MODEL_NAME = [codellama7i, codellama34i, codestral, deepseek_base, deepseek_instruct]
-# PROMPT = [instruct, codellama, deepseek]
+# Launching jobs in array=1-<nb. of models> - we can execute multiple elemental jobs (each model is a sub-job)
+# sharing the same configurations
 MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
 
 # Language [python, java, js]
+# tasks = [humanevalexplaindescribe-python,humanevalexplaindescribe-java,humanevalexplaindescribe-javascript]
+# Update 30/06: we only execute code summarization task in python language
 LANGUAGE=python
-#humanevalexplaindescribe-python,humanevalexplaindescribe-java,humanevalexplaindescribe-javascript
 
 # Sampling temperature for summary generation
 MODEL_TEMP=$1
-MODEL_TOP_P=$2 # Nucleus sampling
+MODEL_TOP_P=$2 
 MODEL_MAXTOKENS=2000
 DATASET_NUM_SAMPLE=20
 

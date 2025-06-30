@@ -21,8 +21,6 @@ CONTAINER_WORKDIR=/workdir
 CONTAINER_DATASETS=/datasets
 
 # Experiment variable - change here for each experiment
-# MODEL_NAME = [codellama7i, codellama34i, codestral, deepseek_base, deepseek_instruct]
-# PROMPT = [instruct, codellama, deepseek]
 MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
 
 # Language [python, java, js]
