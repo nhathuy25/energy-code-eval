@@ -19,9 +19,11 @@ CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\
 CONTAINER_WORKDIR=/workdir
 CONTAINER_DATASETS=/datasets
 
-# Experiment variable - change here for each experiment
+# Launching jobs in array=1-<nb. of models> - we can execute multiple elemental jobs (each model is a sub-job)
+# sharing the same configurations
 MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
 
+# Execute multiple task for the same model with same generation's configuration within a container
 TASKS=humaneval,mbpp,codesearchnet-python,humanevalplus,mbppplus
 
 # Sampling temperature

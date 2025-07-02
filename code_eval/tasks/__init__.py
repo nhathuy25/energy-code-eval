@@ -19,7 +19,10 @@ def get_task(task_name, args=None):
     try:
         kwargs = {}
         if "prompt" in inspect.signature(TASK_REGISTRY[task_name]).parameters:
-            kwargs["prompt"] = args.prompt
+            if not args.prompt:
+                kwargs["prompt"] = "instruct"
+            else:
+                kwargs["prompt"] = args.prompt
         if "load_data_path" in inspect.signature(TASK_REGISTRY[task_name]).parameters:
             kwargs["load_data_path"] = args.load_data_path
         return TASK_REGISTRY[task_name](**kwargs)

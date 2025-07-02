@@ -249,7 +249,7 @@ def main():
             power_monitor = PowerMonitor(
                 gpu_indices=args.gpu_indices,
                 update_period=args.update_period,
-                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}.csv')
+                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}_mns{args.max_num_seqs}_max-toks{args.max_tokens}_n{args.n_samples}.csv')
             )
             time.sleep(3)
             
@@ -330,5 +330,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # Sleep time for power usage return to normal level
+    time.sleep(10)
 
     
