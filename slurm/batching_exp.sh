@@ -68,13 +68,4 @@ srun  \
   /bin/bash -c "pip install -e energy-code-eval; \
   $CMD"
 
-EXIT_CODE=$?
-echo "[$SLURM_JOB_ID] Finished '$(date)' with exit($EXIT_CODE)"
-
-# If job fails, requeue only once
-if [[ $EXIT_CODE -ne 0 ]] && [[ -z "$SLURM_RESTART_COUNT" ]] ; then
-    echo "[$SLURM_JOB_ID] Requeuing '$SLURM_JOB_ID' because Job exited with '$EXIT_CODE'"
-    exit 42
-fi
-
 echo "END TIME: $(date)"
