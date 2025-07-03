@@ -160,7 +160,7 @@ def complete_code(
             #inputs = input_tensors.cpu().detach().numpy().tolist() # Deprecated in vLLM
             inputs = batch["content"]
             # Begin monitoring energy
-            energy_key = f"{task.name}_batch_{step}"
+            energy_key = f"batch_{step}_max-toks{gen_kwargs["max_tokens"]}_n{dataloader.dataset.n_copies}"
             if energy_monitor:
                 energy_monitor.begin_window(key=energy_key)
             

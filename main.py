@@ -241,19 +241,12 @@ def main():
             else:
                 args.prompt = "instruct" # Default prompt formulation for most models
 
-        # Set up the power monitoring with multiprocessing
-        if not args.no_monitor:
-            os.makedirs(args.save_monitoring_folder, exist_ok=True)
-            power_dir = os.path.join(args.save_monitoring_folder, 'power')
-            os.makedirs(power_dir, exist_ok=True)
-            power_monitor = PowerMonitor(
-                gpu_indices=args.gpu_indices,
-                update_period=args.update_period,
-                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}_mns{args.max_num_seqs}_max-toks{args.max_tokens}_n{args.n_samples}.csv')
-            )
-            time.sleep(3)
+        ### CHANGES FOR INTERACTIVE EXPERIMENTS, FOR ORIGINAL CODE, REFER TO THE MAIN BRANCH
+        list_max_num_seqs: list[int] = [int(x) for x in args.all_max_num_seqs.split(',')]
+        list_max_tokens: list[int] = [int(x) for x in args.all_max_tokens.split(',')]
+        list_n_samples: list[int] = [int(x) for x in args.all_n_samples.split(',')]
             
-        # Initialize Evaluator for 
+        # Initialize Evaluator for generation and evaluation
         evaluator = Evaluator(model, tokenizer, args)
 
         if (
@@ -279,41 +272,65 @@ def main():
             torch.cuda.synchronize()
             gen_bclock = time.time()
 
-            if args.generation_only:
-                print("generation mode only")
-                generations, references = evaluator.generate_text(
-                    task, intermediate_generations=intermediate_generations
-                )
-                save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
-                save_references_path = f"references_{task}.json"
-                evaluator.save_json_files(
-                    generations,
-                    references,
-                    save_generations_path,
-                    save_references_path,
-                )
-            else:
-                results[task] = evaluator.evaluate(
-                    task, intermediate_generations=intermediate_generations
-                )
-                gen_eclock = time.time()
-                results[task]["generation_time"] = gen_eclock - gen_bclock
+            # Generation part   
+            for n_samples in list_n_samples:
+                for max_tokens in list_max_tokens:
+                    for mns in list_max_num_seqs:
+                        args.n_samples = n_samples
+                        args.max_tokens = max_tokens
+                        args.max_num_seqs = mns
+
+                        # Update evaluator arguments
+                        evaluator.args = args
+                        # - Change LLM Engine scheduler batch size
+                        model.llm_engine.scheduler_config.max_num_seqs=mns
+
+                        # Set up the power monitoring with multiprocessing FOR EACH CONFIGURATION OF EXP.
+                        if not args.no_monitor:
+                            os.makedirs(args.save_monitoring_folder, exist_ok=True)
+                            power_dir = os.path.join(args.save_monitoring_folder, 'power')
+                            os.makedirs(power_dir, exist_ok=True)
+                            power_monitor = PowerMonitor(
+                                gpu_indices=args.gpu_indices,
+                                update_period=args.update_period,
+                                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}_mns{args.max_num_seqs}_max-toks{args.max_tokens}_n{args.n_samples}.csv')
+                            )
+                            time.sleep(3)
+
+                        if args.generation_only:
+                            print("generation mode only")
+                            generations, references = evaluator.generate_text(
+                                task, intermediate_generations=intermediate_generations
+                            )
+                            save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
+                            save_references_path = f"references_{task}.json"
+                            evaluator.save_json_files(
+                                generations,
+                                references,
+                                save_generations_path,
+                                save_references_path,
+                            )
+                        else:
+                            results[task] = evaluator.evaluate(
+                                task, intermediate_generations=intermediate_generations
+                            )
+
+                        if not args.no_monitor:
+                            try:
+                                time.sleep(3)
+                                power_monitor._stop()
+                            except Exception as e:
+                                print(f'Failed to stop power monitor: {e}')
         
         ms_inference = main_emonitor.end_window('inference')
-        if not args.no_monitor:
-            try:
-                time.sleep(3)
-                power_monitor._stop()
-            except Exception as e:
-                print(f'Failed to stop power monitor: {e}')
+        
 
     # Over all measurements of main.py, for detailed batch-level measurements, enable --save_monitoring_folder
     measurements = dict(total_execution_time = ms_loading.time + ms_inference.time,
                         model_loading_time = ms_loading.time,
                         model_loading_energy = ms_loading.total_energy,
                         tasks_execution_time = ms_inference.time,
-                        overall_energy = ms_inference.total_energy + ms_loading.total_energy,
-                        total_num_tokens = 0,)
+                        overall_energy = ms_inference.total_energy + ms_loading.total_energy)
 
     # Save all args to config
     results["config"] = vars(args)
