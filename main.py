@@ -242,9 +242,18 @@ def main():
                 args.prompt = "instruct" # Default prompt formulation for most models
 
         ### CHANGES FOR INTERACTIVE EXPERIMENTS, FOR ORIGINAL CODE, REFER TO THE MAIN BRANCH
-        list_max_num_seqs: list[int] = [int(x) for x in args.all_max_num_seqs.split(',')]
-        list_max_tokens: list[int] = [int(x) for x in args.all_max_tokens.split(',')]
-        list_n_samples: list[int] = [int(x) for x in args.all_n_samples.split(',')]
+        if args.all_max_num_seqs:
+            list_max_num_seqs: list[int] = [int(x) for x in args.all_max_num_seqs.split(',')]
+        else: 
+            list_max_num_seqs = [args.max_num_seqs]
+        if args.all_max_tokens:
+            list_max_tokens: list[int] = [int(x) for x in args.all_max_tokens.split(',')]
+        else: 
+            list_max_tokens = [args.max_tokens]
+        if args.all_n_samples:
+            list_n_samples: list[int] = [int(x) for x in args.all_n_samples.split(',')]
+        else: 
+            list_n_samples = [args.n_samples]
             
         # Initialize Evaluator for generation and evaluation
         evaluator = Evaluator(model, tokenizer, args)
@@ -272,7 +281,7 @@ def main():
             torch.cuda.synchronize()
             gen_bclock = time.time()
 
-            # Generation part   
+            # Generation part for each set of configuration
             for n_samples in list_n_samples:
                 for max_tokens in list_max_tokens:
                     for mns in list_max_num_seqs:
