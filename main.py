@@ -26,7 +26,7 @@ from pynvml import *
 
 # April 2025: Use the V0 version of vLLM since V1 is still experimental
 os.environ['VLLM_USE_V1'] = '0'
-
+# Use Xformers - FlashAttention as default instead of FlashAttention-2
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -137,9 +137,6 @@ def main():
                 "than the non-quantized model."
             )
 
-        else:
-            print(f"Loading model in {args.dtype}")
-
         # Change backend to GEMLITE of HQQuantization models
         config_path = os.path.join(args.model, "config.json")
         try:
@@ -149,22 +146,23 @@ def main():
             if "quantization_config" in config:
                 if "quant_method" in config["quantization_config"]:
                     quant_method = config["quantization_config"]["quant_method"]
+                    # Using float16 precision for AWQ and GPTQ models
+                    model_kwargs['dtype'] = torch.float16 
                 else: quant_method = None
             else:
                 quant_method = None
 
-            """
-            if quant_method == 'awq':
-                # Avoid error with 
+            if quant_method in ('awq', 'gptq'):
+                # Avoid error with FlashAttention
                 # Source: https://github.com/vllm-project/vllm/issues/5376
-                print("Changing awq attention backend to Xformers instead of FlashAttention")
-                os.environ["export VLLM_ATTENTION_BACKEND"]="XFORMERS"
-            """
+                print("Changing awq/gptq attention backend to Xformers instead of FlashAttention")
+                os.environ["VLLM_ATTENTION_BACKEND"]="XFORMERS"
+            
             if quant_method == 'hqq':
                 print("Changing hqq backend for vLLM inference")
                 from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-                set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
-                #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
+                #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+                set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
 
                 # It is suggested to load HQQ model in float16 precision for Gemlite backend and bfloat16 for Torchao's tiny_gemm backend
                 # Source: https://github.com/mobiusml/hqq?tab=readme-ov-file#optimized-inference
@@ -186,12 +184,12 @@ def main():
 
         # Initialization of measuring window for model loading 
         main_emonitor.begin_window('loading_model')
+        print("Loading model in precision", model_kwargs['dtype'])
         model = LLM(
             args.model,
             enforce_eager = args.enforce_eager,
             **model_kwargs
             )
-    
 
         # Energy measurements of the loading process
         ms_loading : Measurement = main_emonitor.end_window('loading_model')
@@ -241,7 +239,7 @@ def main():
             else:
                 args.prompt = "instruct" # Default prompt formulation for most models
 
-        ### CHANGES FOR INTERACTIVE EXPERIMENTS, FOR ORIGINAL CODE, REFER TO THE MAIN BRANCH
+        # Inference with different configuration within a single model load.
         if args.all_max_num_seqs:
             list_max_num_seqs: list[int] = [int(x) for x in args.all_max_num_seqs.split(',')]
         else: 
@@ -289,6 +287,8 @@ def main():
                         args.max_tokens = max_tokens
                         args.max_num_seqs = mns
 
+                        print(f'Generaion for n-samples{n_samples}, max-tokens{max_tokens}, batch-size{mns}')
+
                         # Update evaluator arguments
                         evaluator.args = args
                         # - Change LLM Engine scheduler batch size
@@ -304,7 +304,7 @@ def main():
                                 update_period=args.update_period,
                                 power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}_mns{args.max_num_seqs}_max-toks{args.max_tokens}_n{args.n_samples}.csv')
                             )
-                            time.sleep(3)
+                            time.sleep(10)
 
                         if args.generation_only:
                             print("generation mode only")
@@ -326,7 +326,7 @@ def main():
 
                         if not args.no_monitor:
                             try:
-                                time.sleep(3)
+                                time.sleep(10)
                                 power_monitor._stop()
                             except Exception as e:
                                 print(f'Failed to stop power monitor: {e}')

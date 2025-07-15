@@ -63,6 +63,7 @@ CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--generation_only \
 	--trust_remote_code \
 	--enforce_eager \
+	--max_model_len 16384 \
 	--max_num_seqs 128 \
 	--num_scheduler_steps $NUM_STEP \
 	--enable_chunked_prefill $BOOL_CHUNKED_PREFILL \
