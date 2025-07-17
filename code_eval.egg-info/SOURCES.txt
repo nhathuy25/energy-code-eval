@@ -35,6 +35,7 @@ code_eval/tasks/__pycache__/humaneval.cpython-312.pyc
 code_eval/tasks/__pycache__/humanevalpack.cpython-312.pyc
 code_eval/tasks/__pycache__/mbpp.cpython-312.pyc
 code_eval/tasks/__pycache__/utils.cpython-312.pyc
+code_eval/tasks/custom_metrics/__init__.py
 code_eval/tasks/custom_metrics/code_eval.py
 code_eval/tasks/custom_metrics/execute.py
 code_eval/tasks/custom_metrics/__pycache__/code_eval.cpython-310.pyc

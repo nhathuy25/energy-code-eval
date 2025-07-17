@@ -4,7 +4,7 @@
 #SBATCH --gpus-per-node=GA100:1
 #SBATCH --constraint=gpu_mem_80
 #SBATCH --mem=5GB                      # Memory per node
-#SBATCH --time=15:00:00                # Time limit set to 15hrs
+#SBATCH --time=5:00:00                # Time limit set to 3hrs
 #SBATCH --output=slurm-%A_%a.out
 
 echo "START TIME: $(date)"

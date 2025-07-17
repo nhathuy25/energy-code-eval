@@ -32,6 +32,10 @@ class GenerationArguments:
     max_tokens: Optional[int] = field(
         default=256, metadata={"help": "Maximum length of generated sequence."}
     )
+    all_max_tokens: Optional[str] = field(
+        default=None,
+        metadata={"help": "List of number of differents max_tokens values"}
+    ) 
     eos: Optional[str] = field(
         default="<|endoftext|>", metadata={"help": "end of sentence token."}
     )
@@ -42,6 +46,10 @@ class GenerationArguments:
         default=1,
         metadata={"help": "Number of completions to generate for each sample."}
     )
+    all_n_samples: Optional[str] = field(
+        default=None,
+        metadata={"help": "List of number of differents n_samples values"}
+    ) 
     batch_size: Optional[int] = field(
         default=None,
         metadata={"help": "Batch size for evaluation on each worker, can be larger for HumanEval"}
@@ -65,6 +73,10 @@ class SchedulerArguments(argparse.ArgumentParser):
             "help": "Maximum number of sequences to generate in parallel."
         }
     )
+    all_max_num_seqs: Optional[str] = field(
+        default=None,
+        metadata={"help": "List of number of differents n_samples values"}
+    ) 
     max_num_batched_tokens: Optional[int] = field(
         default=None,
         metadata={

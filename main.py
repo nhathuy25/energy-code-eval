@@ -26,7 +26,7 @@ from pynvml import *
 
 # April 2025: Use the V0 version of vLLM since V1 is still experimental
 os.environ['VLLM_USE_V1'] = '0'
-
+# Use Xformers - FlashAttention as default instead of FlashAttention-2
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -137,9 +137,6 @@ def main():
                 "than the non-quantized model."
             )
 
-        else:
-            print(f"Loading model in {args.dtype}")
-
         # Change backend to GEMLITE of HQQuantization models
         config_path = os.path.join(args.model, "config.json")
         try:
@@ -149,22 +146,23 @@ def main():
             if "quantization_config" in config:
                 if "quant_method" in config["quantization_config"]:
                     quant_method = config["quantization_config"]["quant_method"]
+                    # Using float16 precision for AWQ and GPTQ models
+                    model_kwargs['dtype'] = torch.float16 
                 else: quant_method = None
             else:
                 quant_method = None
 
-            """
-            if quant_method == 'awq':
-                # Avoid error with 
+            if quant_method in ('awq', 'gptq'):
+                # Avoid error with FlashAttention
                 # Source: https://github.com/vllm-project/vllm/issues/5376
-                print("Changing awq attention backend to Xformers instead of FlashAttention")
-                os.environ["export VLLM_ATTENTION_BACKEND"]="XFORMERS"
-            """
+                print("Changing awq/gptq attention backend to Xformers instead of FlashAttention")
+                os.environ["VLLM_ATTENTION_BACKEND"]="XFORMERS"
+            
             if quant_method == 'hqq':
                 print("Changing hqq backend for vLLM inference")
                 from hqq.utils.vllm import set_vllm_hqq_backend, VLLM_HQQ_BACKEND
-                set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
-                #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
+                #set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.GEMLITE)
+                set_vllm_hqq_backend(backend=VLLM_HQQ_BACKEND.PYTORCH)
 
                 # It is suggested to load HQQ model in float16 precision for Gemlite backend and bfloat16 for Torchao's tiny_gemm backend
                 # Source: https://github.com/mobiusml/hqq?tab=readme-ov-file#optimized-inference
@@ -186,12 +184,12 @@ def main():
 
         # Initialization of measuring window for model loading 
         main_emonitor.begin_window('loading_model')
+        print("Loading model in precision", model_kwargs['dtype'])
         model = LLM(
             args.model,
             enforce_eager = args.enforce_eager,
             **model_kwargs
             )
-    
 
         # Energy measurements of the loading process
         ms_loading : Measurement = main_emonitor.end_window('loading_model')
@@ -241,19 +239,21 @@ def main():
             else:
                 args.prompt = "instruct" # Default prompt formulation for most models
 
-        # Set up the power monitoring with multiprocessing
-        if not args.no_monitor:
-            os.makedirs(args.save_monitoring_folder, exist_ok=True)
-            power_dir = os.path.join(args.save_monitoring_folder, 'power')
-            os.makedirs(power_dir, exist_ok=True)
-            power_monitor = PowerMonitor(
-                gpu_indices=args.gpu_indices,
-                update_period=args.update_period,
-                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}_mns{args.max_num_seqs}_max-toks{args.max_tokens}_n{args.n_samples}.csv')
-            )
-            time.sleep(3)
+        # Inference with different configuration within a single model load.
+        if args.all_max_num_seqs:
+            list_max_num_seqs: list[int] = [int(x) for x in args.all_max_num_seqs.split(',')]
+        else: 
+            list_max_num_seqs = [args.max_num_seqs]
+        if args.all_max_tokens:
+            list_max_tokens: list[int] = [int(x) for x in args.all_max_tokens.split(',')]
+        else: 
+            list_max_tokens = [args.max_tokens]
+        if args.all_n_samples:
+            list_n_samples: list[int] = [int(x) for x in args.all_n_samples.split(',')]
+        else: 
+            list_n_samples = [args.n_samples]
             
-        # Initialize Evaluator for 
+        # Initialize Evaluator for generation and evaluation
         evaluator = Evaluator(model, tokenizer, args)
 
         if (
@@ -264,6 +264,17 @@ def main():
                 "If passing --load_generations_intermediate_paths, \
                 must pass equal number of files as number of tasks"
             )
+        
+        # Dummy generation to warm up the GPU and model
+        print("Generating dummy text to warm up the model and GPU")
+        model.generate("This is a dummy generation to warm up the model and GPU",
+                       sampling_params=SamplingParams(
+                           max_tokens=128,
+                           temperature=0.0,
+                           top_p=1.0,
+                       ),
+        )
+        time.sleep(3)
 
         # Generation and evaluation for each task
         main_emonitor.begin_window('inference')
@@ -279,41 +290,68 @@ def main():
             torch.cuda.synchronize()
             gen_bclock = time.time()
 
-            if args.generation_only:
-                print("generation mode only")
-                generations, references = evaluator.generate_text(
-                    task, intermediate_generations=intermediate_generations
-                )
-                save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
-                save_references_path = f"references_{task}.json"
-                evaluator.save_json_files(
-                    generations,
-                    references,
-                    save_generations_path,
-                    save_references_path,
-                )
-            else:
-                results[task] = evaluator.evaluate(
-                    task, intermediate_generations=intermediate_generations
-                )
-                gen_eclock = time.time()
-                results[task]["generation_time"] = gen_eclock - gen_bclock
+            
+            # Generation part for each set of configuration
+            for n_samples in list_n_samples:
+                for max_tokens in list_max_tokens:
+                    for mns in list_max_num_seqs:
+                        args.n_samples = n_samples
+                        args.max_tokens = max_tokens
+                        args.max_num_seqs = mns
+
+                        print(f'Generaion for n-samples{n_samples}, max-tokens{max_tokens}, batch-size{mns}')
+
+                        # Update evaluator arguments
+                        evaluator.args = args
+                        # - Change LLM Engine scheduler batch size
+                        model.llm_engine.scheduler_config.max_num_seqs=mns
+
+                        # Set up the power monitoring with multiprocessing FOR EACH CONFIGURATION OF EXP.
+                        if not args.no_monitor:
+                            os.makedirs(args.save_monitoring_folder, exist_ok=True)
+                            power_dir = os.path.join(args.save_monitoring_folder, 'power')
+                            os.makedirs(power_dir, exist_ok=True)
+                            power_monitor = PowerMonitor(
+                                gpu_indices=args.gpu_indices,
+                                update_period=args.update_period,
+                                power_csv_path= os.path.join(power_dir, f'{model_name}_{','.join(task_names)}_mns{args.max_num_seqs}_max-toks{args.max_tokens}_n{args.n_samples}.csv')
+                            )
+                            time.sleep(10)
+
+                        if args.generation_only:
+                            print("generation mode only")
+                            generations, references = evaluator.generate_text(
+                                task, intermediate_generations=intermediate_generations
+                            )
+                            save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
+                            save_references_path = f"references_{task}.json"
+                            evaluator.save_json_files(
+                                generations,
+                                references,
+                                save_generations_path,
+                                save_references_path,
+                            )
+                        else:
+                            results[task] = evaluator.evaluate(
+                                task, intermediate_generations=intermediate_generations
+                            )
+
+                        if not args.no_monitor:
+                            try:
+                                time.sleep(10)
+                                power_monitor._stop()
+                            except Exception as e:
+                                print(f'Failed to stop power monitor: {e}')
         
         ms_inference = main_emonitor.end_window('inference')
-        if not args.no_monitor:
-            try:
-                time.sleep(3)
-                power_monitor._stop()
-            except Exception as e:
-                print(f'Failed to stop power monitor: {e}')
+        
 
     # Over all measurements of main.py, for detailed batch-level measurements, enable --save_monitoring_folder
     measurements = dict(total_execution_time = ms_loading.time + ms_inference.time,
                         model_loading_time = ms_loading.time,
                         model_loading_energy = ms_loading.total_energy,
                         tasks_execution_time = ms_inference.time,
-                        overall_energy = ms_inference.total_energy + ms_loading.total_energy,
-                        total_num_tokens = 0,)
+                        overall_energy = ms_inference.total_energy + ms_loading.total_energy)
 
     # Save all args to config
     results["config"] = vars(args)
@@ -323,7 +361,21 @@ def main():
     print(dumped)
     metrics_dir = os.path.join(args.save_monitoring_folder, 'metrics')
     os.makedirs(metrics_dir, exist_ok=True)
-    metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
+
+    if 'humanevalexplainsynthesize' in args.task_names[0]:
+        # If it is humanevalexplainsynthesize task, we need to specify the language
+        from code_eval import tasks
+        # Suppose that the 'tasks' argument has only one task for HEE  
+        task_var = tasks.get_task(args.task_names[0], args)
+        language = task_var.DATASET_NAME
+        try:
+            describe_model = os.path.basename(args.load_data_path).replace(f'_humanevalexplaindescribe-{language}.json','')
+        except Exception as e:
+            print(f"Failed to get describe model name from {args.load_data_path}: {e}")
+        print(f"Saving metrics for describe model {describe_model}")
+        metrics_path = os.path.join(metrics_dir, f'{describe_model}_{model_name}_{','.join(task_names)}.json')
+    else:
+        metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
     with open(metrics_path, "w") as f:
         f.write(dumped)
 
