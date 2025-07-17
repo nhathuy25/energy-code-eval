@@ -264,6 +264,17 @@ def main():
                 "If passing --load_generations_intermediate_paths, \
                 must pass equal number of files as number of tasks"
             )
+        
+        # Dummy generation to warm up the GPU and model
+        print("Generating dummy text to warm up the model and GPU")
+        model.generate("This is a dummy generation to warm up the model and GPU",
+                       sampling_params=SamplingParams(
+                           max_tokens=128,
+                           temperature=0.0,
+                           top_p=1.0,
+                       ),
+        )
+        time.sleep(3)
 
         # Generation and evaluation for each task
         main_emonitor.begin_window('inference')
@@ -279,6 +290,7 @@ def main():
             torch.cuda.synchronize()
             gen_bclock = time.time()
 
+            
             # Generation part for each set of configuration
             for n_samples in list_n_samples:
                 for max_tokens in list_max_tokens:
@@ -349,7 +361,21 @@ def main():
     print(dumped)
     metrics_dir = os.path.join(args.save_monitoring_folder, 'metrics')
     os.makedirs(metrics_dir, exist_ok=True)
-    metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
+
+    if 'humanevalexplainsynthesize' in args.task_names[0]:
+        # If it is humanevalexplainsynthesize task, we need to specify the language
+        from code_eval import tasks
+        # Suppose that the 'tasks' argument has only one task for HEE  
+        task_var = tasks.get_task(args.task_names[0], args)
+        language = task_var.DATASET_NAME
+        try:
+            describe_model = os.path.basename(args.load_data_path).replace(f'_humanevalexplaindescribe-{language}.json','')
+        except Exception as e:
+            print(f"Failed to get describe model name from {args.load_data_path}: {e}")
+        print(f"Saving metrics for describe model {describe_model}")
+        metrics_path = os.path.join(metrics_dir, f'{describe_model}_{model_name}_{','.join(task_names)}.json')
+    else:
+        metrics_path = os.path.join(metrics_dir, f'{model_name}_{','.join(task_names)}.json')
     with open(metrics_path, "w") as f:
         f.write(dumped)
 
