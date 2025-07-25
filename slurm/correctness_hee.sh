@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name="corr_hee"                 # Job name
-#SBATCH --cpus-per-gpu=1
+#SBATCH --cpus-per-gpu=5
 #SBATCH --gpus-per-node=GA100:1
 #SBATCH --constraint=gpu_mem_80
-#SBATCH --mem=5GB                      # Memory per node
-#SBATCH --time=15:00:00                # Time limit set to 15hrs
+#SBATCH --mem=10GB                      # Memory per node
+#SBATCH --time=8:00:00                # Time limit set to 8hrs
 #SBATCH --output=slurm-%A_%a.out
 
 ### This script is used to run the correctness evaluation of code summerization task with HumanEvalExplain
@@ -20,10 +20,6 @@ CONTAINER_MOUNTS=/opt/marcel-c3/workdir/shvm6927/workdir/:/workdir,\
 CONTAINER_WORKDIR=/workdir
 CONTAINER_DATASETS=/datasets
 
-# Launching jobs in array=1-<nb. of models> - we can execute multiple elemental jobs (each model is a sub-job)
-# sharing the same configurations
-MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
-
 # Language [python, java, js]
 # tasks = [humanevalexplaindescribe-python,humanevalexplaindescribe-java,humanevalexplaindescribe-javascript]
 # Update 30/06: we only execute code summarization task in python language
@@ -34,6 +30,13 @@ MODEL_TEMP=$1
 MODEL_TOP_P=$2 
 MODEL_MAXTOKENS=2000
 DATASET_NUM_SAMPLE=20
+
+# Launching jobs in array=1-<nb. of models> - we can execute multiple elemental jobs (each model is a sub-job)
+# sharing the same configurations
+# Models name extracted from models.txt to execute jobs in array
+MODEL=$CONTAINER_DATASETS/$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
+# Else: pass as arguments to the script (uncomment this line and comment the above line)
+# MODEL=$3
 
 # Experiment results path
 RESULT_DIR="$CONTAINER_WORKDIR/energy-code-eval/results/correctness_hee"
@@ -54,7 +57,7 @@ SRUN_ARGS="\
 "
 
 DESCRIBE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
-	--model $CONTAINER_DATASETS/$MODEL_NAME \
+	--model $MODEL \
 	--tasks humanevalexplaindescribe-${LANGUAGE} \
 	--n_samples $DATASET_NUM_SAMPLE \
 	--temperature $MODEL_TEMP \
@@ -72,11 +75,11 @@ DESCRIBE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
 	--save_monitoring_folder $RESULT_PATH \
 	--generation_only"
 
-# To generate code from synthesized summary, using greedy search
-SYNTHESIZE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
-	--model $CONTAINER_DATASETS/$MODEL_NAME \
+# To generate code from synthesized summary, using greedy search for 6 different evaluate models
+SYNTHESIZE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
+	--model $CONTAINER_DATASETS/Codestral-22B-v0.1 \
 	--tasks humanevalexplainsynthesize-${LANGUAGE} \
-	--n_samples 5 \
+	--n_samples 2 \
 	--temperature 0 \
 	--top_p 1 \
 	--max_tokens 512 \
@@ -86,7 +89,97 @@ SYNTHESIZE="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
 	--num_scheduler_steps 1 \
 	--enable_chunked_prefill False \
 	--max_num_seqs 128 \
-	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-$LANGUAGE.json \
+	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-${LANGUAGE}.json \
+	--trust_remote_code \
+	--no_monitor \
+	--save_monitoring_folder $RESULT_PATH"
+
+SYNTHESIZE2="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
+	--model $CONTAINER_DATASETS/deepseek-coder-33b-instruct \
+	--tasks humanevalexplainsynthesize-${LANGUAGE} \
+	--n_samples 2 \
+	--temperature 0 \
+	--top_p 1 \
+	--max_tokens 512 \
+	--allow_code_execution \
+	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
+	--max_num_seqs 128 \
+	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-${LANGUAGE}.json \
+	--trust_remote_code \
+	--no_monitor \
+	--save_monitoring_folder $RESULT_PATH"
+
+SYNTHESIZE3="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
+	--model $CONTAINER_DATASETS/deepseek-coder-6.7b-instruct \
+	--tasks humanevalexplainsynthesize-${LANGUAGE} \
+	--n_samples 2 \
+	--temperature 0 \
+	--top_p 1 \
+	--max_tokens 512 \
+	--allow_code_execution \
+	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
+	--max_num_seqs 128 \
+	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-${LANGUAGE}.json \
+	--trust_remote_code \
+	--no_monitor \
+	--save_monitoring_folder $RESULT_PATH"
+
+SYNTHESIZE4="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
+	--model $CONTAINER_DATASETS/DeepSeek-Coder-V2-Lite-Instruct \
+	--tasks humanevalexplainsynthesize-${LANGUAGE} \
+	--n_samples 2 \
+	--temperature 0 \
+	--top_p 1 \
+	--max_tokens 512 \
+	--allow_code_execution \
+	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
+	--max_num_seqs 128 \
+	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-${LANGUAGE}.json \
+	--trust_remote_code \
+	--no_monitor \
+	--save_monitoring_folder $RESULT_PATH"
+
+SYNTHESIZE5="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
+	--model $CONTAINER_DATASETS/CodeLlama-34b-Instruct-hf \
+	--tasks humanevalexplainsynthesize-${LANGUAGE} \
+	--n_samples 1 \
+	--temperature 0 \
+	--top_p 1 \
+	--max_tokens 512 \
+	--allow_code_execution \
+	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
+	--max_num_seqs 128 \
+	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-${LANGUAGE}.json \
+	--trust_remote_code \
+	--no_monitor \
+	--save_monitoring_folder $RESULT_PATH"
+
+SYNTHESIZE6="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py  \
+	--model $CONTAINER_DATASETS/CodeLlama-7b-Instruct-hf \
+	--tasks humanevalexplainsynthesize-${LANGUAGE} \
+	--n_samples 1 \
+	--temperature 0 \
+	--top_p 1 \
+	--max_tokens 512 \
+	--allow_code_execution \
+	--enforce_eager \
+	--max_model_len 16384 \
+	--num_scheduler_steps 1 \
+	--enable_chunked_prefill False \
+	--max_num_seqs 128 \
+	--load_data_path $RESULT_PATH/generations/${MODEL_NAME}_humanevalexplaindescribe-${LANGUAGE}.json \
 	--trust_remote_code \
 	--no_monitor \
 	--save_monitoring_folder $RESULT_PATH"
@@ -98,6 +191,6 @@ echo $SYNTHESIZE
 srun  \
   $SRUN_ARGS \
   /bin/bash -c "pip install -e energy-code-eval; \
-  $DESCRIBE; $SYNTHESIZE"
+  $DESCRIBE; $SYNTHESIZE; $SYNTHESIZE2; $SYNTHESIZE3; $SYNTHESIZE4; $SYNTHESIZE5; $SYNTHESIZE6"
 
 echo "END TIME: $(date)"

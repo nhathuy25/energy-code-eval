@@ -4,7 +4,7 @@
 #SBATCH --gpus-per-node=GA100:1
 #SBATCH --constraint=gpu_mem_80
 #SBATCH --mem=5GB                      # Memory per node
-#SBATCH --time=15:00:00                # Time limit set to 15hrs
+#SBATCH --time=6:00:00                # Time limit set to 6hrs
 #SBATCH --output=slurm-%A_%a.out
 
 echo "START TIME: $(date)"
@@ -21,7 +21,10 @@ CONTAINER_DATASETS=/datasets
 
 # Launching jobs in array=1-<nb. of models> - we can execute multiple elemental jobs (each model is a sub-job)
 # sharing the same configurations
-MODEL_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
+# Models name extracted from models.txt to execute jobs in array
+MODEL=$CONTAINER_DATASETS/$(sed -n "${SLURM_ARRAY_TASK_ID}p" models.txt)
+# Else: pass as arguments to the script (uncomment this line and comment the above line)
+# MODEL=$1
 
 # Execute multiple task for the same model with same generation's configuration within a container
 TASKS=humaneval,mbpp,codesearchnet-python,humanevalplus,mbppplus
@@ -44,7 +47,7 @@ SRUN_ARGS="\
 "
 
 CMD="python3 $CONTAINER_WORKDIR/energy-code-eval/main.py \
-	--model $CONTAINER_DATASETS/$MODEL_NAME \
+	--model $MODEL \
 	--tasks $TASKS \
 	--n_samples $DATASET_NUM_SAMPLE \
 	--temperature $MODEL_TEMP \

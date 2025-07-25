@@ -8,7 +8,9 @@ build
 results/
 
 __pycache__
-
+*.egg-info
+*.pyc
+*.pyo
 
 # SLURM output files
 slurm/run_all_experiments.sh

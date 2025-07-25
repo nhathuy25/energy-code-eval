@@ -279,6 +279,7 @@ def main():
         # Generation and evaluation for each task
         main_emonitor.begin_window('inference')
         for idx, task in enumerate(task_names):
+            print(f"Processing task: {task}")
             intermediate_generations = None
             # For completed generated file, evaluator evaluate only instead of generate + evaluate.
             if args.load_generations_intermediate_paths:
