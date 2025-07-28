@@ -4,8 +4,10 @@ build
 *.json
 *.jsonl
 
-# Results dir
-results/
+# Ignore all files results directory except Python files
+results/*
+!results/*.py
+!results/readme.md
 
 __pycache__
 *.egg-info
