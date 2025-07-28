@@ -6,6 +6,10 @@ build
 
 # Ignore all files results directory except Python files
 results/*
+!results/batching
+!results/scheduler
+!results/correctness
+!results/correctness_hee
 !results/*.py
 !results/readme.md
 

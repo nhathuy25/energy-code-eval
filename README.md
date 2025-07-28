@@ -7,10 +7,62 @@ Applying faster LLMs inferences with [vLLM](https://github.com/vllm-project/vllm
 
 - vllm == 0.8.4
 - transformers >= 4.51.0
-- hqq==0.2.7
-- gemlite==0.4.7
+- hqq == 0.2.7
+- gemlite == 0.4.7
+- sentence-transformers == 4.1.0
+- datasets == 3.2.0
 
 See more in `requirements.txt`
+
+##
+```
+experiment-code-eval/
+├── code_eval/
+│   ├── monitor/
+│   │   ├── device/
+│   │   ├── __init__.py
+│   │   ├── energy.py
+│   │   ├── power.py
+│   │   └── utils.py
+│   ├── tasks/
+│   │   ├── custom_metrics/
+│   │   ├── __init__.py
+│   │   ├── codesearchnet.py
+│   │   ├── humaneval.py
+│   │   ├── humanevalpack.py
+│   │   ├── humanevalplus.py
+│   │   ├── mbpp.py
+│   │   ├── mbppplus.py
+│   │   └── utils.py
+│   ├── __init__.py
+│   ├── arguments.py
+│   ├── base.py
+│   ├── evaluator.py
+│   ├── generation.py
+│   └── utils.py
+├── results/
+│   ├── batching/
+│   │   ├── n128/
+│   │   ├── n256/
+│   │   └── n512/
+│   ├── correctness/
+│   │   ├── greedy/
+│   │   ├── mix/
+│   │   └── nucleus/
+│   ├── correctness_hee/
+│   │   ├── greedy/
+│   │   ├── mix/
+│   │   └── nucleus/
+│   ├── scheduler/
+│   │   ├── chunked_prefill/
+│   │   ├── multi_step/
+│   │   └── single_step/
+│   ├── export_energy.py
+│   └── export_metrics.py
+├── slurm/
+├── main.py
+└── setup.py
+```
 
 ## How to use
 

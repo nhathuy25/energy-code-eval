@@ -1,0 +1,2 @@
+start_time,window_name,elapsed_time,gpu0_energy,num_in_tokens,num_out_tokens,first_token_time,finished_time
+1750686786.9979582,humaneval,139.2993085384369,39211.064999997616,25342,167936,6.476755619049072,139.2951374053955
