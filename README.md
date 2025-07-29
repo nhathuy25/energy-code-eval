@@ -27,12 +27,7 @@ experiment-code-eval/
 │   ├── tasks/
 │   │   ├── custom_metrics/
 │   │   ├── __init__.py
-│   │   ├── codesearchnet.py
-│   │   ├── humaneval.py
-│   │   ├── humanevalpack.py
-│   │   ├── humanevalplus.py
-│   │   ├── mbpp.py
-│   │   ├── mbppplus.py
+│   │   ├── <TASKS_FILE>.py
 │   │   └── utils.py
 │   ├── __init__.py
 │   ├── arguments.py
@@ -42,25 +37,14 @@ experiment-code-eval/
 │   └── utils.py
 ├── results/
 │   ├── batching/
-│   │   ├── n128/
-│   │   ├── n256/
-│   │   └── n512/
+│   │   └── <N_SAMPLES VALUES>/
 │   ├── correctness/
-│   │   ├── greedy/
-│   │   ├── mix/
-│   │   └── nucleus/
 │   ├── correctness_hee/
-│   │   ├── greedy/
-│   │   ├── mix/
-│   │   └── nucleus/
 │   ├── scheduler/
-│   │   ├── chunked_prefill/
-│   │   ├── multi_step/
-│   │   └── single_step/
 │   ├── export_energy.py
 │   └── export_metrics.py
-├── slurm/
-├── main.py
+├── slurm/									:
+├── main.py									:
 └── setup.py
 ```
 
@@ -179,9 +163,3 @@ python3 main.py  \
 ## Launching SLURM's jobs
 
 Please refers to some SLURM examples [here](./slurm/)
-
-## TODOs:
-
-- Complete the implementation for multiple GPUs (`--tensor_parallel_size` >= 2)
-- Complete the implementation of HQQ 
-- Still exist some error when launching SLURM job with some AWQ models
