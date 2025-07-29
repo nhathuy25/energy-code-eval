@@ -24,10 +24,6 @@ from code_eval.utils import RESULT_DIR
 # Energy measurement
 from pynvml import *
 
-# April 2025: Use the V0 version of vLLM since V1 is still experimental
-os.environ['VLLM_USE_V1'] = '0'
-# Use Xformers - FlashAttention as default instead of FlashAttention-2
-
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 #Create the results directory if they don't exist
@@ -305,7 +301,7 @@ def main():
                         # Update evaluator arguments
                         evaluator.args = args
                         # - Change LLM Engine scheduler batch size
-                        model.llm_engine.scheduler_config.max_num_seqs=mns
+                        model.llm_engine.vllm_config.scheduler_config.max_num_seqs=mns
 
                         # Set up the power monitoring with multiprocessing FOR EACH CONFIGURATION OF EXP.
                         if not args.no_monitor:
