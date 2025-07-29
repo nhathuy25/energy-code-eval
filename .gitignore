@@ -1,8 +1,8 @@
 build
 
 # Test .json file
-*.json
-*.jsonl
+./*.json
+./*.jsonl
 
 # Ignore all files results directory except Python files
 results/*

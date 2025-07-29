@@ -1,0 +1,95 @@
+{
+  "humaneval": {
+    "pass@1": 0.0,
+    "pass@10": 0.0,
+    "generation_time": 1474.9977180957794
+  },
+  "mbppplus": {
+    "pass@1": 0.0,
+    "pass@10": 0.0,
+    "generation_time": 3146.803509235382
+  },
+  "mbpp": {
+    "pass@1": 0.0,
+    "pass@10": 0.0,
+    "generation_time": 4333.97189450264
+  },
+  "codesearchnet-python": {
+    "cosine": 0.0656413659453392,
+    "euclidean": -32.99739074707031,
+    "BERTScore": 0.0,
+    "generation_time": 1578.4315841197968
+  },
+  "humanevalplus": {
+    "pass@1": 0.0,
+    "pass@10": 0.0,
+    "generation_time": 2033.313622713089
+  },
+  "config": {
+    "gpu_indices": null,
+    "cpu_indices": null,
+    "no_monitor": false,
+    "update_period": 0.1,
+    "save_monitoring_folder": "/workdir/experiment-code-eval/results/correctness/mix",
+    "max_num_seqs": 128,
+    "max_num_batched_tokens": null,
+    "enable_chunked_prefill": null,
+    "num_scheduler_steps": 1,
+    "prefix": "",
+    "temperature": 0.5,
+    "top_k": -1,
+    "top_p": 0.95,
+    "max_tokens": 512,
+    "eos": "<|endoftext|>",
+    "seed": null,
+    "n_samples": 20,
+    "batch_size": null,
+    "no_stop": false,
+    "model": "/datasets/Mixtral-8x7B-Instruct-v0.1-AWQ",
+    "peft_model": null,
+    "revision": null,
+    "use_auth_token": false,
+    "trust_remote_code": true,
+    "enforce_eager": true,
+    "max_model_len": null,
+    "tasks": "humaneval,mbpp,codesearchnet-python,humanevalplus,mbppplus",
+    "instruction_tokens": null,
+    "tensor_parallel_size": 1,
+    "dtype": "auto",
+    "load_in_8bit": false,
+    "load_in_4bit": false,
+    "left_padding": false,
+    "limit": null,
+    "limit_start": 0,
+    "save_every_k_tasks": -1,
+    "postprocess": true,
+    "allow_code_execution": true,
+    "generation_only": false,
+    "load_generations_path": null,
+    "load_data_path": null,
+    "metric_output_path": "results/evaluation_results.json",
+    "save_generations": false,
+    "load_generations_intermediate_paths": null,
+    "save_generations_path": "results/generations.json",
+    "save_references": false,
+    "save_references_path": "results/references.json",
+    "prompt": "instruct",
+    "gpu_memory_utilization": null,
+    "check_references": false,
+    "task_names": [
+      "humaneval",
+      "mbppplus",
+      "mbpp",
+      "codesearchnet-python",
+      "humanevalplus"
+    ]
+  },
+  "main.py measurements": {
+    "total_execution_time": 12855.059350013733,
+    "model_loading_time": 287.53621768951416,
+    "model_loading_energy": 19469.83899998665,
+    "tasks_execution_time": 12567.523132324219,
+    "overall_energy": 2037751.4689999819,
+    "total_num_tokens": 0
+  }
+}

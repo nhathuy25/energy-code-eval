@@ -1,0 +1,92 @@
+{
+  "humaneval": {
+    "pass@1": 0.6820121951219512,
+    "pass@10": 0.8950547300619037
+  },
+  "humanevalplus": {
+    "pass@1": 0.5908536585365854,
+    "pass@10": 0.8498084355424081
+  },
+  "codesearchnet-python": {
+    "cosine": 0.4583893418312073,
+    "euclidean": -24.77047348022461,
+    "BERTScore": 0.7460064888000488
+  },
+  "mbpp": {
+    "pass@1": 0.5694,
+    "pass@10": 0.7566551668146095
+  },
+  "mbppplus": {
+    "pass@1": 0.6279100529100529,
+    "pass@10": 0.795320935800812
+  },
+  "config": {
+    "gpu_indices": null,
+    "cpu_indices": null,
+    "no_monitor": false,
+    "update_period": 0.1,
+    "save_monitoring_folder": "/workdir/experiment-code-eval/results/correctness/nucleus",
+    "max_num_seqs": 128,
+    "all_max_num_seqs": null,
+    "max_num_batched_tokens": null,
+    "enable_chunked_prefill": null,
+    "num_scheduler_steps": 1,
+    "prefix": "",
+    "temperature": 0.8,
+    "top_k": -1,
+    "top_p": 0.95,
+    "max_tokens": 512,
+    "all_max_tokens": null,
+    "eos": "<|endoftext|>",
+    "seed": null,
+    "n_samples": 20,
+    "all_n_samples": null,
+    "batch_size": null,
+    "no_stop": false,
+    "model": "/datasets/deepseek-coder-6.7B-instruct-GPTQ",
+    "peft_model": null,
+    "revision": null,
+    "use_auth_token": false,
+    "trust_remote_code": true,
+    "enforce_eager": true,
+    "max_model_len": null,
+    "tasks": "humaneval,mbpp,codesearchnet-python,humanevalplus,mbppplus",
+    "instruction_tokens": null,
+    "tensor_parallel_size": 1,
+    "dtype": "auto",
+    "load_in_8bit": false,
+    "load_in_4bit": false,
+    "left_padding": false,
+    "limit": null,
+    "limit_start": 0,
+    "save_every_k_tasks": -1,
+    "postprocess": true,
+    "allow_code_execution": true,
+    "generation_only": false,
+    "load_generations_path": null,
+    "load_data_path": null,
+    "metric_output_path": "results/evaluation_results.json",
+    "save_generations": false,
+    "load_generations_intermediate_paths": null,
+    "save_generations_path": "results/generations.json",
+    "save_references": false,
+    "save_references_path": "results/references.json",
+    "prompt": "instruct",
+    "gpu_memory_utilization": null,
+    "check_references": false,
+    "task_names": [
+      "humaneval",
+      "humanevalplus",
+      "codesearchnet-python",
+      "mbpp",
+      "mbppplus"
+    ]
+  },
+  "main.py measurements": {
+    "total_execution_time": 8048.205258607864,
+    "model_loading_time": 23.390767097473145,
+    "model_loading_energy": 1486.3130000084639,
+    "tasks_execution_time": 8024.814491510391,
+    "overall_energy": 760072.1810000092
+  }
+}

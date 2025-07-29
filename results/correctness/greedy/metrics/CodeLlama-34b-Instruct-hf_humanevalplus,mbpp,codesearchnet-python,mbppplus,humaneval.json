@@ -1,0 +1,95 @@
+{
+  "humanevalplus": {
+    "pass@1": 0.39420731707317075,
+    "pass@10": 0.40826067762940066,
+    "generation_time": 1102.450498342514
+  },
+  "mbpp": {
+    "pass@1": 0.46140000000000003,
+    "pass@10": 0.47351321743272207,
+    "generation_time": 2384.8155195713043
+  },
+  "codesearchnet-python": {
+    "cosine": 0.5740569829940796,
+    "euclidean": -21.9764404296875,
+    "BERTScore": 0.8448594212532043,
+    "generation_time": 966.4933698177338
+  },
+  "mbppplus": {
+    "pass@1": 0.5349206349206349,
+    "pass@10": 0.5396681921449723,
+    "generation_time": 3405.05446767807
+  },
+  "humaneval": {
+    "pass@1": 0.4545731707317074,
+    "pass@10": 0.47388968918267416,
+    "generation_time": 1295.3402869701385
+  },
+  "config": {
+    "gpu_indices": null,
+    "cpu_indices": null,
+    "no_monitor": false,
+    "update_period": 0.1,
+    "save_monitoring_folder": "/workdir/experiment-code-eval/results/correctness/greedy",
+    "max_num_seqs": 128,
+    "max_num_batched_tokens": null,
+    "enable_chunked_prefill": false,
+    "num_scheduler_steps": 1,
+    "prefix": "",
+    "temperature": 0.0,
+    "top_k": -1,
+    "top_p": 1.0,
+    "max_tokens": 512,
+    "eos": "<|endoftext|>",
+    "seed": null,
+    "n_samples": 20,
+    "batch_size": null,
+    "no_stop": false,
+    "model": "/datasets/CodeLlama-34b-Instruct-hf",
+    "peft_model": null,
+    "revision": null,
+    "use_auth_token": false,
+    "trust_remote_code": true,
+    "enforce_eager": true,
+    "max_model_len": 16384,
+    "tasks": "humaneval,mbpp,codesearchnet-python,humanevalplus,mbppplus",
+    "instruction_tokens": null,
+    "tensor_parallel_size": 1,
+    "dtype": "auto",
+    "load_in_8bit": false,
+    "load_in_4bit": false,
+    "left_padding": false,
+    "limit": null,
+    "limit_start": 0,
+    "save_every_k_tasks": -1,
+    "postprocess": true,
+    "allow_code_execution": true,
+    "generation_only": false,
+    "load_generations_path": null,
+    "load_data_path": null,
+    "metric_output_path": "results/evaluation_results.json",
+    "save_generations": false,
+    "load_generations_intermediate_paths": null,
+    "save_generations_path": "results/generations.json",
+    "save_references": false,
+    "save_references_path": "results/references.json",
+    "prompt": "codellama",
+    "gpu_memory_utilization": null,
+    "check_references": false,
+    "task_names": [
+      "humanevalplus",
+      "mbpp",
+      "codesearchnet-python",
+      "mbppplus",
+      "humaneval"
+    ]
+  },
+  "main.py measurements": {
+    "total_execution_time": 9263.157902002335,
+    "model_loading_time": 109.00047588348389,
+    "model_loading_energy": 8261.090000003576,
+    "tasks_execution_time": 9154.15742611885,
+    "overall_energy": 1367315.6369999945,
+    "total_num_tokens": 0
+  }
+}
