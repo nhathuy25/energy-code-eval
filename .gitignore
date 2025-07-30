@@ -15,8 +15,8 @@ results/*
 
 __pycache__
 *.egg-info
-*.pyc
 *.pyo
+*.pyc
 
 # SLURM output files
 slurm/run_all_experiments.sh
