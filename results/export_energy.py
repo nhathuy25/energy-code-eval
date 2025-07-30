@@ -1,6 +1,27 @@
 import os
 import pandas as pd
 import argparse
+import math
+
+# Define a function to extract model family and assign suffix priority
+def get_model_sort_key(model_name):
+    # Define the suffix priority (base: 0, AWQ: 1, GPTQ: 2, HQQ: 3)
+    if "_4bits64gs_HQQ" in model_name or "_4bitgs64_HQQ" in model_name:
+        suffix_priority = 3
+        base_name = model_name.split("_4bit")[0]
+    elif "GPTQ" in model_name:
+        suffix_priority = 2
+        base_name = model_name.replace("-GPTQ", "")
+    elif "AWQ" in model_name:
+        suffix_priority = 1
+        base_name = model_name.replace("-AWQ", "")
+    else:
+        suffix_priority = 0  # Base model
+        base_name = model_name
+        
+    # Return tuple for sorting: first by base model name, then by suffix priority
+    return (base_name, suffix_priority)
+
 
 def process_experiment_files(base_directory, experiment_type):
     """
@@ -15,8 +36,8 @@ def process_experiment_files(base_directory, experiment_type):
 
     # Define subdirectories based on experiment type
     if experiment_type == 'batching':
-        subdirs = [d for d in os.listdir(base_directory) if d.startswith('mns')]
-        column_name = 'batching'
+        subdirs = [d for d in os.listdir(base_directory) if d.startswith('n') and os.path.isdir(os.path.join(base_directory, d))]
+        column_name = 'n_samples'
     else:  # scheduler
         subdirs = ['single_step', 'multi_step', 'chunked_prefill']
         column_name = 'scheduler'
@@ -42,18 +63,44 @@ def process_experiment_files(base_directory, experiment_type):
                             # Extract model name
                             model_name = filename.replace(f"_{task}.csv", "")
 
+                            # Extract mns, max-toks, n_samples from window_name
+                            import re
+                            def extract_window_info(window_name):
+                                match = re.search(r"mns(\d+)_max-toks(\d+)_n(\d+)", window_name)
+                                if match:
+                                    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+                                else:
+                                    return None, None, None
+
+                            df[["mns", "max_tokens", "n_samples"]] = df["window_name"].apply(
+                                lambda x: pd.Series(extract_window_info(x))
+                            )
+
                             # Add metadata
                             df["model"] = model_name
                             df["task"] = task
-                            df[column_name] = subdir  # Add experiment type information
+                            if experiment_type != "batching":
+                                df[column_name] = subdir  # Add experiment type information for scheduling experiments
 
-                            # Compute derived metrics safely
+                            # Compute derived metrics
                             df["energy_per_token"] = df["gpu0_energy"] / df["num_out_tokens"].replace(0, pd.NA)
                             df["time_per_token_ms"] = df["elapsed_time"] / df["num_out_tokens"].replace(0, pd.NA) * 1000
                             df["token_per_second"] = df["num_out_tokens"] / df["elapsed_time"].replace(0, pd.NA) 
+                            df["avg_power"] = df["gpu0_energy"] / df["elapsed_time"].replace(0, pd.NA) 
+
+                            # Extract the Throughput for only decoding parts
+                            df["decode_token_per_second"] = (df["num_out_tokens"] - df["n_samples"]) / (df["elapsed_time"] - df["first_token_time"]*(df["n_samples"]/df["mns"])).replace(0, pd.NA)
+                            # Inter-token latency for only decoding parts
+                            df["decode_time_per_token_ms"] = (df["elapsed_time"] - df["first_token_time"]*(df["n_samples"]/df["mns"])) / (df["num_out_tokens"] - df["n_samples"]).replace(0, pd.NA) * 1000
+
+                            # Number of tokens Prefill:Decode ratio 
+                            df["PD_ratio"] = df["num_out_tokens"] / df["num_in_tokens"].replace(0, pd.NA)
 
                             # Reorder columns: metadata first, then metrics
-                            cols = ["model", "task", column_name] + [col for col in df.columns if col not in ["model", "task", column_name]]
+                            meta_cols = ["model", "task"]
+                            if experiment_type != 'batching':
+                                meta_cols.append(column_name)
+                            cols = meta_cols + [col for col in df.columns if col not in meta_cols]
                             df = df[cols]
 
                             all_data.append(df)
@@ -64,6 +111,12 @@ def process_experiment_files(base_directory, experiment_type):
     # Combine and save
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
+        # Drop duplicates based on model, mns, n_samples, and max_tokens
+        if experiment_type == 'batching':
+            combined_df = combined_df.drop_duplicates(subset=["model", "mns", "n_samples", "max_tokens"])
+        # For scheduler experiments, drop duplicates based on scheduler type also
+        else: 
+            combined_df = combined_df.drop_duplicates(subset=["model", "scheduler", "mns", "n_samples", "max_tokens"])
         
         # Create output filename based on experiment type
         output_name = f"{experiment_type}_combined.csv"
