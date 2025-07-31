@@ -167,14 +167,16 @@ Please refers to some SLURM examples [here](./slurm/)
 ## Notes on kernel's backend
 - With base (instruction finetuned) models, we use `FlashAttention-2` by default.
 - With quantized models, we change the backend to `X-formers`, which is developed on `FlashAttention`. This is necessary because `FlashAttention-2` in this version of vLLM leads to CUDA errors ([source](https://github.com/vllm-project/vllm/issues/5376)), especially with AWQ quantization.
-- For HQQ models, implementation with PyTorch backend ([main.py - line 128](./main.py#L128)) is faster than Gemlite, which is recommended by the author. However, with vLLM v0.8.4, we still observe underperformance of HQQ in terms of throughput and energy efficiency.
+- For HQQ models, implementation with it's PyTorch backend ([main.py - line 128](./main.py#L128)) is faster than Gemlite, which is recommended by the author. However, with vLLM v0.8.4, we still observe underperformance of HQQ in terms of throughput and energy efficiency.
 
 ## V1 Experiments
 
 Switch to branch `vllm_v1` for V1 implementation of vLLM version 0.8.4 ([source](https://developers.redhat.com/articles/2025/04/28/performance-boosts-vllm-081-switching-v1-engine#architectural_changes_and_simplifications))
-Majors changes
+
+Majors changes:
 - Multi-step and Chunked prefill are always active.
 - Engine re-architecture.
+- Cannot manually change max-num-seqs once the engine is initialized (at least with vLLM v0.8.4).
 - etc.
 
 
