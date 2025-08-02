@@ -14,17 +14,17 @@ Applying faster LLMs inferences with [vLLM](https://github.com/vllm-project/vllm
 
 See more in `requirements.txt`
 
-##
+## Structure of the repository
 ```
 energy-code-eval/
-├── code_eval/
-│   ├── monitor/							:
-│   │   ├── device/
+├── code_eval/						: Principal module for generated code evaluation, collecting data on energy, power graphs, etc.
+│   ├── monitor/					: Module for monitoring energy during inference of LLMs.
+│   │   ├── device/					: Support for NVIDIA GPUs, CPU monitoring is not implemented.
 │   │   ├── __init__.py
 │   │   ├── energy.py
 │   │   ├── power.py
 │   │   └── utils.py
-│   ├── tasks/								:
+│   ├── tasks/						: Contains benchmarks for code evaluation.
 │   │   ├── custom_metrics/
 │   │   ├── __init__.py
 │   │   ├── <TASKS_FILE>.py
@@ -35,16 +35,15 @@ energy-code-eval/
 │   ├── evaluator.py
 │   ├── generation.py
 │   └── utils.py
-├── results/								:
+├── results/						: Contains raw data files collected during experiments.
 │   ├── batching/
-│   │   └── <N_SAMPLES VALUES>/
 │   ├── correctness/
 │   ├── correctness_hee/
 │   ├── scheduler/
-│   ├── export_energy.py					:
-│   └── export_metrics.py					:
-├── slurm/									:
-├── main.py									:
+│   ├── export_energy.py			
+│   └── export_metrics.py			
+├── slurm/							: Contains shell scripts for executing jobs on HPC server with SLURM.
+├── main.py							: Main script for executing inference with LLMs.
 └── setup.py
 ```
 
