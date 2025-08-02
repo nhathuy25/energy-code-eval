@@ -15,7 +15,6 @@ Applying faster LLMs inferences with [vLLM](https://github.com/vllm-project/vllm
 See more in `requirements.txt`
 
 ## Structure of the repository
-```
 energy-code-eval/
 ├── code_eval/						: Principal module for generated code evaluation, collecting data on energy, power graphs, etc.
 │   ├── monitor/					: Module for monitoring energy during inference of LLMs.
@@ -45,14 +44,13 @@ energy-code-eval/
 ├── slurm/							: Contains shell scripts for executing jobs on HPC server with SLURM.
 ├── main.py							: Main script for executing inference with LLMs.
 └── setup.py
-```
 
 ## How to use
 
 Please refer to [this file](./code_eval/arguments.py) for arguments' informations.
 
 ### Basic load and inference with vLLM
-```cmd
+```
 python3 main.py \
 	--model <MODEL_DIRECTORY> \
 	--tasks humaneval \ # To execute multiple task, seperate the tasks by ',' (eg. humaneval,mbpp,codesearchnet-python)
@@ -73,7 +71,7 @@ python3 main.py \
 Exist `--save_generations` and `--save_generations_path` to save the generated code.
 
 ### Energy and power consumption monitoring with pyNVML
-```cmd
+```
 python3 main.py \
 	--model <MODEL_DIRECTORY> \
 	--tasks humaneval \
@@ -111,8 +109,9 @@ HumanEvalExplain require 2 times execution, first for generating description D f
 
 Original dataset -> C1 -> D -> C2 -> pass@k
 
-```cmd
-# HumanEvalExplainDescribe : For generating natural language description D from the canonical solution code C1 of the original dataset HumanEval.
+```
+# HumanEvalExplainDescribe : For generating natural language description D from 
+the canonical solution code C1 of the original dataset HumanEval.
 
 ## Exist 3 available language : python, java, javascript
 LANGUAGE=python 
@@ -137,7 +136,8 @@ python3 main.py \
 ```
 
 ```
-# HumanEvalExplainSynthesize : For generating synthesized code C2 and evaluation with pass@1 score.
+# HumanEvalExplainSynthesize : For generating synthesized code C2 
+and evaluation with pass@1 score.
 
 LANGUAGE=python 
 python3 main.py  \
