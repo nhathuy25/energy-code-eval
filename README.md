@@ -14,25 +14,20 @@ Applying faster LLMs inferences with [vLLM](https://github.com/vllm-project/vllm
 
 See more in `requirements.txt`
 
-##
+## Structure of the repository
 ```
-experiment-code-eval/
-├── code_eval/
-│   ├── monitor/
-│   │   ├── device/
+energy-code-eval/
+├── code_eval/				: Principal module for generated code evaluation, collecting data on energy, power graphs, etc.
+│   ├── monitor/			: Module for monitoring energy during inference of LLMs.
+│   │   ├── device/			: Support for NVIDIA GPUs, CPU monitoring is not implemented.
 │   │   ├── __init__.py
 │   │   ├── energy.py
 │   │   ├── power.py
 │   │   └── utils.py
-│   ├── tasks/
+│   ├── tasks/				: Contains benchmarks for code evaluation.
 │   │   ├── custom_metrics/
 │   │   ├── __init__.py
-│   │   ├── codesearchnet.py
-│   │   ├── humaneval.py
-│   │   ├── humanevalpack.py
-│   │   ├── humanevalplus.py
-│   │   ├── mbpp.py
-│   │   ├── mbppplus.py
+│   │   ├── <TASKS_FILE>.py
 │   │   └── utils.py
 │   ├── __init__.py
 │   ├── arguments.py
@@ -40,36 +35,23 @@ experiment-code-eval/
 │   ├── evaluator.py
 │   ├── generation.py
 │   └── utils.py
-├── results/
+├── results/				: Contains raw data files collected during experiments.
 │   ├── batching/
-│   │   ├── n128/
-│   │   ├── n256/
-│   │   └── n512/
 │   ├── correctness/
-│   │   ├── greedy/
-│   │   ├── mix/
-│   │   └── nucleus/
 │   ├── correctness_hee/
-│   │   ├── greedy/
-│   │   ├── mix/
-│   │   └── nucleus/
 │   ├── scheduler/
-│   │   ├── chunked_prefill/
-│   │   ├── multi_step/
-│   │   └── single_step/
-│   ├── export_energy.py
-│   └── export_metrics.py
-├── slurm/
-├── main.py
+│   ├── export_energy.py			
+│   └── export_metrics.py			
+├── slurm/					: Contains shell scripts for executing jobs on HPC server with SLURM.
+├── main.py					: Main script for executing inference with LLMs.
 └── setup.py
 ```
-
 ## How to use
 
 Please refer to [this file](./code_eval/arguments.py) for arguments' informations.
 
 ### Basic load and inference with vLLM
-```cmd
+```
 python3 main.py \
 	--model <MODEL_DIRECTORY> \
 	--tasks humaneval \ # To execute multiple task, seperate the tasks by ',' (eg. humaneval,mbpp,codesearchnet-python)
@@ -90,7 +72,7 @@ python3 main.py \
 Exist `--save_generations` and `--save_generations_path` to save the generated code.
 
 ### Energy and power consumption monitoring with pyNVML
-```cmd
+```
 python3 main.py \
 	--model <MODEL_DIRECTORY> \
 	--tasks humaneval \
@@ -128,8 +110,9 @@ HumanEvalExplain require 2 times execution, first for generating description D f
 
 Original dataset -> C1 -> D -> C2 -> pass@k
 
-```cmd
-# HumanEvalExplainDescribe : For generating natural language description D from the canonical solution code C1 of the original dataset HumanEval.
+```
+# HumanEvalExplainDescribe : For generating natural language description D from 
+the canonical solution code C1 of the original dataset HumanEval.
 
 ## Exist 3 available language : python, java, javascript
 LANGUAGE=python 
@@ -154,7 +137,8 @@ python3 main.py \
 ```
 
 ```
-# HumanEvalExplainSynthesize : For generating synthesized code C2 and evaluation with pass@1 score.
+# HumanEvalExplainSynthesize : For generating synthesized code C2 
+and evaluation with pass@1 score.
 
 LANGUAGE=python 
 python3 main.py  \
@@ -180,8 +164,19 @@ python3 main.py  \
 
 Please refers to some SLURM examples [here](./slurm/)
 
-## TODOs:
+## Notes on kernel's backend
+- With base (instruction finetuned) models, we use `FlashAttention-2` by default.
+- With quantized models, we change the backend to `X-formers`, which is developed on `FlashAttention`. This is necessary because `FlashAttention-2` in this version of vLLM leads to CUDA errors ([source](https://github.com/vllm-project/vllm/issues/5376)), especially with AWQ quantization.
+- For HQQ models, implementation with it's PyTorch backend ([main.py - line 128](./main.py#L128)) is faster than Gemlite, which is recommended by the author. However, with vLLM v0.8.4, we still observe underperformance of HQQ in terms of throughput and energy efficiency.
 
-- Complete the implementation for multiple GPUs (`--tensor_parallel_size` >= 2)
-- Complete the implementation of HQQ 
-- Still exist some error when launching SLURM job with some AWQ models
+## V1 Experiments
+
+Switch to branch `vllm_v1` for V1 implementation of vLLM version 0.8.4 ([source](https://developers.redhat.com/articles/2025/04/28/performance-boosts-vllm-081-switching-v1-engine#architectural_changes_and_simplifications))
+
+Majors changes:
+- Multi-step and Chunked prefill are always active.
+- Engine re-architecture.
+- Cannot manually change max-num-seqs once the engine is initialized (at least with vLLM v0.8.4).
+- etc.
+
+
