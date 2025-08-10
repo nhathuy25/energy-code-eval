@@ -1,5 +1,8 @@
 build
 
+# Notebook files
+.ipynb
+
 # Test .json file
 ./*.json
 ./*.jsonl
